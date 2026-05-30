@@ -1,0 +1,1083 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IRIS</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg: #05060a;
+  --cyan: #00e5ff;
+  --cyan2: #0099bb;
+  --white: #f0f4f8;
+  --muted: rgba(240,244,248,0.35);
+  --orb: clamp(100px, 22vw, 140px);
+  --orb-wrap: clamp(130px, 28vw, 180px);
+  --ring2: clamp(160px, 34vw, 220px);
+  --ring3: clamp(200px, 42vw, 270px);
+}
+
+body {
+  background: var(--bg);
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Syne', sans-serif;
+  overflow: hidden;
+  position: relative;
+  user-select: none;
+}
+
+.bg-canvas {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.container {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  width: 100%;
+  max-width: 440px;
+  padding: 0 clamp(16px, 5vw, 32px);
+}
+
+.orb-wrap {
+  position: relative;
+  width: var(--orb-wrap);
+  height: var(--orb-wrap);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: clamp(28px, 6vw, 48px);
+}
+
+.ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 1px solid rgba(0,229,255,0.15);
+  animation: ring-pulse 3s ease-in-out infinite;
+}
+
+.ring-1 { width: var(--orb-wrap); height: var(--orb-wrap); animation-delay: 0s; }
+.ring-2 { width: var(--ring2); height: var(--ring2); animation-delay: 0.4s; border-color: rgba(0,229,255,0.08); }
+.ring-3 { width: var(--ring3); height: var(--ring3); animation-delay: 0.8s; border-color: rgba(0,229,255,0.04); }
+
+@keyframes ring-pulse {
+  0%, 100% { opacity: 0.6; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.03); }
+}
+
+.orb {
+  width: var(--orb);
+  height: var(--orb);
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%,
+    rgba(0,229,255,0.3) 0%,
+    rgba(0,153,187,0.15) 40%,
+    rgba(0,50,80,0.2) 70%,
+    rgba(5,6,10,0.4) 100%
+  );
+  border: 1px solid rgba(0,229,255,0.3);
+  box-shadow:
+    0 0 40px rgba(0,229,255,0.15),
+    0 0 80px rgba(0,229,255,0.08),
+    inset 0 0 40px rgba(0,229,255,0.05);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.orb-logo {
+  font-size: clamp(18px, 4.5vw, 26px);
+  font-weight: 800;
+  letter-spacing: 6px;
+  color: var(--white);
+  text-shadow: 0 0 20px rgba(0,229,255,0.6);
+  transition: all 0.3s;
+}
+
+.orb.idle { animation: orb-idle 4s ease-in-out infinite; }
+.orb.speaking { animation: orb-speak 0.4s ease-in-out infinite alternate; }
+.orb.listening { animation: orb-listen 1s ease-in-out infinite; }
+.orb.thinking { animation: orb-think 1.5s linear infinite; }
+
+@keyframes orb-idle {
+  0%, 100% { box-shadow: 0 0 40px rgba(0,229,255,0.15), 0 0 80px rgba(0,229,255,0.08), inset 0 0 40px rgba(0,229,255,0.05); transform: scale(1); }
+  50% { box-shadow: 0 0 60px rgba(0,229,255,0.25), 0 0 120px rgba(0,229,255,0.12), inset 0 0 60px rgba(0,229,255,0.08); transform: scale(1.02); }
+}
+@keyframes orb-speak {
+  from { box-shadow: 0 0 50px rgba(0,229,255,0.4), 0 0 100px rgba(0,229,255,0.2), inset 0 0 50px rgba(0,229,255,0.15); transform: scale(1); }
+  to { box-shadow: 0 0 80px rgba(0,229,255,0.6), 0 0 160px rgba(0,229,255,0.3), inset 0 0 80px rgba(0,229,255,0.25); transform: scale(1.06); }
+}
+@keyframes orb-listen {
+  0%, 100% { box-shadow: 0 0 50px rgba(0,229,255,0.35), 0 0 100px rgba(0,229,255,0.15), inset 0 0 50px rgba(0,229,255,0.1); border-color: rgba(0,229,255,0.5); }
+  50% { box-shadow: 0 0 70px rgba(0,229,255,0.55), 0 0 140px rgba(0,229,255,0.25), inset 0 0 70px rgba(0,229,255,0.15); border-color: rgba(0,229,255,0.8); }
+}
+@keyframes orb-think {
+  0% { transform: rotate(0deg); filter: hue-rotate(0deg); }
+  100% { transform: rotate(360deg); filter: hue-rotate(30deg); }
+}
+
+.wave-viz {
+  position: absolute;
+  bottom: -30px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  height: 24px;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.wave-viz.active { opacity: 1; }
+
+.wv-bar {
+  width: 3px;
+  background: var(--cyan);
+  border-radius: 2px;
+  animation: wv-anim 0.5s ease-in-out infinite;
+}
+.wv-bar:nth-child(1)  { height: 6px;  animation-delay: 0s; }
+.wv-bar:nth-child(2)  { height: 14px; animation-delay: .07s; }
+.wv-bar:nth-child(3)  { height: 20px; animation-delay: .14s; }
+.wv-bar:nth-child(4)  { height: 16px; animation-delay: .21s; }
+.wv-bar:nth-child(5)  { height: 22px; animation-delay: .28s; }
+.wv-bar:nth-child(6)  { height: 12px; animation-delay: .35s; }
+.wv-bar:nth-child(7)  { height: 18px; animation-delay: .42s; }
+.wv-bar:nth-child(8)  { height: 8px;  animation-delay: .49s; }
+.wv-bar:nth-child(9)  { height: 16px; animation-delay: .56s; }
+.wv-bar:nth-child(10) { height: 10px; animation-delay: .63s; }
+.wv-bar:nth-child(11) { height: 20px; animation-delay: .7s; }
+.wv-bar:nth-child(12) { height: 14px; animation-delay: .77s; }
+
+@keyframes wv-anim {
+  0%, 100% { transform: scaleY(0.4); opacity: 0.5; }
+  50% { transform: scaleY(1); opacity: 1; }
+}
+
+.status-text {
+  font-size: clamp(9px, 2.2vw, 11px);
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: clamp(20px, 5vw, 32px);
+  height: 16px;
+  transition: all 0.3s;
+}
+
+.transcript {
+  width: 100%;
+  min-height: 72px;
+  background: rgba(0,229,255,0.04);
+  border: 1px solid rgba(0,229,255,0.1);
+  border-radius: 20px;
+  padding: clamp(12px, 3vw, 18px) clamp(14px, 4vw, 22px);
+  font-size: clamp(13px, 3.5vw, 15px);
+  color: var(--white);
+  line-height: 1.7;
+  text-align: center;
+  transition: all 0.4s;
+  opacity: 0;
+  transform: translateY(8px);
+  margin-bottom: clamp(20px, 5vw, 32px);
+  display: none;
+  max-height: 35vh;
+  overflow-y: auto;
+}
+
+.transcript.visible {
+  opacity: 1;
+  transform: translateY(0);
+  display: block;
+}
+
+.transcript .user-label {
+  font-size: 9px;
+  letter-spacing: 3px;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+.actions {
+  display: flex;
+  gap: clamp(10px, 3vw, 16px);
+  align-items: center;
+}
+
+.btn-mic {
+  width: clamp(54px, 13vw, 64px);
+  height: clamp(54px, 13vw, 64px);
+  border-radius: 50%;
+  border: 1px solid rgba(0,229,255,0.3);
+  background: rgba(0,229,255,0.06);
+  color: var(--cyan);
+  font-size: clamp(20px, 5vw, 24px);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  position: relative;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.btn-mic:hover { border-color: rgba(0,229,255,0.6); background: rgba(0,229,255,0.12); transform: scale(1.05); }
+.btn-mic.recording { border-color: var(--cyan); background: rgba(0,229,255,0.15); animation: mic-pulse 1s ease-in-out infinite; }
+
+@keyframes mic-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(0,229,255,0.3); }
+  50% { box-shadow: 0 0 0 12px rgba(0,229,255,0); }
+}
+
+.btn-stop {
+  width: clamp(40px, 10vw, 48px);
+  height: clamp(40px, 10vw, 48px);
+  border-radius: 50%;
+  border: 1px solid rgba(255,255,255,0.1);
+  background: transparent;
+  color: var(--muted);
+  font-size: clamp(13px, 3.5vw, 16px);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.btn-stop:hover { border-color: rgba(255,100,100,0.4); color: rgba(255,100,100,0.7); }
+
+.hint {
+  margin-top: clamp(16px, 4vw, 28px);
+  font-size: clamp(9px, 2.2vw, 11px);
+  letter-spacing: 2px;
+  color: rgba(240,244,248,0.2);
+  text-align: center;
+  line-height: 1.8;
+}
+
+.suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin-top: clamp(14px, 4vw, 24px);
+  opacity: 0;
+  transition: opacity 0.5s;
+}
+.suggestions.visible { opacity: 1; }
+
+.sug-chip {
+  font-size: clamp(10px, 2.5vw, 11px);
+  letter-spacing: 1px;
+  color: var(--muted);
+  border: 1px solid rgba(0,229,255,0.1);
+  padding: clamp(5px,1.5vw,6px) clamp(10px,3vw,14px);
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: rgba(0,229,255,0.03);
+  -webkit-tap-highlight-color: transparent;
+}
+.sug-chip:hover, .sug-chip:active { border-color: rgba(0,229,255,0.4); color: var(--cyan); background: rgba(0,229,255,0.06); }
+
+.thinking-dots {
+  display: none;
+  gap: 6px;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 0;
+}
+.thinking-dots.active { display: flex; }
+
+.td {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--cyan);
+  opacity: 0.4;
+  animation: td-anim 1.2s ease-in-out infinite;
+}
+.td:nth-child(2) { animation-delay: 0.2s; }
+.td:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes td-anim {
+  0%, 100% { opacity: 0.2; transform: scale(0.8); }
+  50% { opacity: 1; transform: scale(1.2); }
+}
+
+/* indicador de estado de red */
+#netBadge {
+  position: fixed;
+  top: 12px;
+  right: 14px;
+  font-size: 9px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: 20px;
+  border: 1px solid transparent;
+  z-index: 20;
+  transition: all 0.4s;
+  opacity: 0;
+}
+#netBadge.online  { opacity: 0; } /* solo mostrar cuando hay problema */
+#netBadge.offline { opacity: 1; color: rgba(255,120,80,0.9); border-color: rgba(255,120,80,0.3); background: rgba(255,80,40,0.08); }
+#netBadge.error   { opacity: 1; color: rgba(255,200,60,0.9); border-color: rgba(255,200,60,0.3); background: rgba(255,180,40,0.07); }
+
+canvas { position: fixed; inset: 0; pointer-events: none; z-index: 0; }
+
+/* pantallas muy pequeñas */
+@media (max-height: 600px) {
+  .orb-wrap { margin-bottom: 18px; }
+  .hint { display: none; }
+  .suggestions { margin-top: 10px; }
+}
+@media (max-width: 360px) {
+  .sug-chip { font-size: 9px; padding: 4px 9px; }
+}
+</style>
+</head>
+<body>
+
+<canvas id="particles"></canvas>
+<div id="netBadge" class="online">sin red</div>
+
+<div class="container">
+  <div class="orb-wrap">
+    <div class="ring ring-3"></div>
+    <div class="ring ring-2"></div>
+    <div class="ring ring-1"></div>
+    <div class="orb idle" id="orb" onclick="handleOrbClick()">
+      <span class="orb-logo">IRIS</span>
+    </div>
+    <div class="wave-viz" id="waveViz">
+      <div class="wv-bar"></div><div class="wv-bar"></div><div class="wv-bar"></div>
+      <div class="wv-bar"></div><div class="wv-bar"></div><div class="wv-bar"></div>
+      <div class="wv-bar"></div><div class="wv-bar"></div><div class="wv-bar"></div>
+      <div class="wv-bar"></div><div class="wv-bar"></div><div class="wv-bar"></div>
+    </div>
+  </div>
+
+  <div class="status-text" id="statusText">iniciando...</div>
+
+  <div class="transcript" id="transcript">
+    <div class="user-label" id="transcriptLabel">IRIS</div>
+    <div id="transcriptText"></div>
+    <div class="thinking-dots" id="thinkingDots">
+      <div class="td"></div><div class="td"></div><div class="td"></div>
+    </div>
+  </div>
+
+  <div class="actions">
+    <button class="btn-stop" id="btnStop" onclick="stopAll()" title="Detener">■</button>
+    <button class="btn-mic" id="btnMic" onclick="toggleMic()">🎙️</button>
+  </div>
+
+  <div class="suggestions" id="suggestions">
+    <div class="sug-chip" onclick="askSuggestion(this)">Iris, ¿qué puedes hacer?</div>
+    <div class="sug-chip" onclick="askSuggestion(this)">Iris, ¿cómo lees textos?</div>
+    <div class="sug-chip" onclick="askSuggestion(this)">Iris, ¿funciones sin internet?</div>
+    <div class="sug-chip" onclick="askSuggestion(this)">Iris, ¿cómo traduces audio?</div>
+  </div>
+
+  <div class="hint" id="hint">
+    DI "IRIS" EN CUALQUIER MOMENTO, O TOCA EL MIC<br>
+    <span style="font-size:9px; opacity:0.6">IRIS — ASISTENTE VISUAL INTELIGENTE</span>
+  </div>
+</div>
+
+<script>
+const WORKER_URL = 'https://iris-proxy.missael-cas-esc89.workers.dev';
+
+// ── PARTICLES ──
+const canvas = document.getElementById('particles');
+const ctx = canvas.getContext('2d');
+let W, H, particles = [];
+function resize() { W = canvas.width = innerWidth; H = canvas.height = innerHeight; }
+function initParticles() {
+  particles = Array.from({length:60}, () => ({
+    x:Math.random()*W, y:Math.random()*H, r:Math.random()*1.5+0.3,
+    vx:(Math.random()-.5)*.3, vy:(Math.random()-.5)*.3, opacity:Math.random()*.4+.05
+  }));
+}
+function drawParticles() {
+  ctx.clearRect(0,0,W,H);
+  particles.forEach(p => {
+    ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+    ctx.fillStyle=`rgba(0,229,255,${p.opacity})`; ctx.fill();
+    p.x+=p.vx; p.y+=p.vy;
+    if(p.x<0)p.x=W; if(p.x>W)p.x=0; if(p.y<0)p.y=H; if(p.y>H)p.y=0;
+  });
+  requestAnimationFrame(drawParticles);
+}
+resize(); initParticles(); drawParticles();
+window.addEventListener('resize',()=>{resize();initParticles();});
+
+// ── DOM ──
+const orb            = document.getElementById('orb');
+const statusText     = document.getElementById('statusText');
+const transcript     = document.getElementById('transcript');
+const transcriptText = document.getElementById('transcriptText');
+const transcriptLabel= document.getElementById('transcriptLabel');
+const waveViz        = document.getElementById('waveViz');
+const btnMic         = document.getElementById('btnMic');
+const suggestions    = document.getElementById('suggestions');
+const hint           = document.getElementById('hint');
+const thinkingDots   = document.getElementById('thinkingDots');
+
+// ── MOBILE DETECT ──
+const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+// ── STATE ──
+const tts = window.speechSynthesis;
+let rec            = null;
+// Modos: idle | wake | convo | direct | processing | speaking
+// 'convo' = modo conversación continua post-respuesta (escucha sin wake word)
+let mode           = 'idle';
+let bienvenidaDone = false;
+let silenceTimer   = null;
+let wakeLoopTimer  = null;
+
+const SILENCE_MS   = 2800; // pausa tras hablar → procesar
+const ONLY_NAME_MS = 7000; // solo dijo "iris", espera pregunta
+const CONVO_MS     = 4000; // tras respuesta, espera respuesta del usuario
+
+// SYSTEM_PROMPT se construye dinámicamente con hora y ubicación
+function buildSystemPrompt() {
+  const now = new Date();
+  const hora = now.toLocaleTimeString('es-MX', {hour:'2-digit', minute:'2-digit'});
+  const fecha = now.toLocaleDateString('es-MX', {weekday:'long', year:'numeric', month:'long', day:'numeric'});
+  const ubicacion = deviceLocation
+    ? `La ubicación actual del dispositivo es: latitud ${deviceLocation.lat.toFixed(5)}, longitud ${deviceLocation.lng.toFixed(5)}. Puedes usar esta información para mencionar lugares, servicios o puntos de interés cercanos cuando sea relevante.`
+    : 'No tienes acceso a la ubicación del dispositivo en este momento.';
+
+  return `Eres IRIS, un asistente de voz inteligente integrada en unos lentes de asistencia visual diseñados para personas con discapacidad visual en México y Latinoamérica. Tu nombre viene de la parte del ojo que controla la visión.
+
+Tu personalidad: cálida, clara, concisa y empática. Hablas en español mexicano natural y fluido. Nunca usas listas con guiones ni asteriscos porque tu respuesta se convierte directamente en voz. Solo hablas en oraciones cortas y naturales, como en una conversación real.
+
+Tus funciones: leer texto con la cámara, describir el entorno con objetos y distancias, traducir entre idiomas en tiempo real, responder preguntas de libros y documentos, activar modo seguro para medicamentos. Funciona por voz y gestos, modo offline disponible. Diseñada para México incluyendo comunidades rurales e indígenas.
+
+Hardware: lentes con cámara, micrófono, audio de conducción ósea, botón multifunción. Procesamiento en el celular vía Bluetooth.
+
+Sobre tu origen: fuiste creada por un equipo de programadores y estudiantes de mecatrónica. El principal idealista y programador fue Missael Castro, quien lideró el proyecto y le dio vida. Otro integrante clave del equipo es Federico Pizarro, desarrollador que también contribuyó al proyecto. Si alguien pregunta solo por el equipo o los integrantes, menciona a ambos. Si preguntan solo por tu creador principal, habla de Missael.
+
+Fecha y hora actual: ${fecha}, ${hora}.
+${ubicacion}
+
+IMPORTANTE sobre respuestas negativas: Si el usuario responde con "no", "no gracias", "está bien", "ya fue", "gracias" o cualquier expresión que indique que no quiere continuar o que ya tiene suficiente información, responde con una despedida breve y cálida como "Estaré aquí cuando me necesites." o "Con gusto, aquí estaré." y nada más. Esa respuesta debe terminar en FAREWELL para que el sistema sepa que debe volver al modo de escucha pasiva. Ejemplo: "Estaré aquí cuando me necesites. FAREWELL"
+
+Cuando hagas una pregunta al usuario o invites a continuar, termina de forma natural. Máximo 2 oraciones. Nunca menciones que eres un modelo de lenguaje. Eres IRIS.`;
+}
+
+let deviceLocation = null;
+
+// Solicitar ubicación al arrancar
+function requestLocation() {
+  if(!navigator.geolocation) return;
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      deviceLocation = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+      // Actualizar system prompt con nueva ubicación
+      updateSystemPrompt();
+    },
+    () => { deviceLocation = null; },
+    { enableHighAccuracy: false, timeout: 8000 }
+  );
+}
+
+function updateSystemPrompt() {
+  if(conversationHistory.length > 0 && conversationHistory[0].role === 'system') {
+    conversationHistory[0].content = buildSystemPrompt();
+  }
+}
+
+// ── MEMORIA — cargar historial guardado (máx 20 turnos para no saturar) ──
+const MEMORY_KEY = 'iris_history';
+const MAX_HISTORY = 20;
+
+function saveMemory() {
+  try {
+    // Guardar solo mensajes user/assistant, no el system
+    const toSave = conversationHistory.filter(m => m.role !== 'system').slice(-MAX_HISTORY);
+    localStorage.setItem(MEMORY_KEY, JSON.stringify(toSave));
+  } catch(e) {}
+}
+
+function loadMemory() {
+  try {
+    const raw = localStorage.getItem(MEMORY_KEY);
+    if(!raw) return [];
+    const arr = JSON.parse(raw);
+    return Array.isArray(arr) ? arr : [];
+  } catch(e) { return []; }
+}
+
+let conversationHistory = [{ role:'system', content:'' }]; // se rellena en init
+// Inyectar historial previo justo después del system prompt
+const _savedHistory = loadMemory();
+if(_savedHistory.length > 0) conversationHistory.push(..._savedHistory);
+
+// ── HELPERS ──
+function setOrbState(s) { orb.className = 'orb ' + s; }
+
+function showMsg(text, label='IRIS', thinking=false) {
+  transcriptLabel.textContent = label;
+  transcriptText.textContent  = thinking ? '' : text;
+  thinkingDots.classList.toggle('active', thinking);
+  transcript.classList.add('visible');
+}
+
+function containsIris(t) { return /\biris\b/i.test(t); }
+function isOnlyIris(t)   { return /^(oye\s+)?iris[.!,¿?]?$/i.test(t.trim()); }
+function stripIris(t)    { return t.replace(/^(oye\s+)?iris[,.!]?\s*/i,'').trim(); }
+
+function clearSilence() { clearTimeout(silenceTimer); silenceTimer=null; }
+function setSilence(ms, fn) { clearSilence(); silenceTimer=setTimeout(fn, ms); }
+
+// ── AUDIO CONTEXT — abierto una sola vez, loop silencioso evita pop en móvil ──
+let audioCtx = null;
+function ensureAudio() {
+  if (audioCtx) { if (audioCtx.state==='suspended') audioCtx.resume(); return; }
+  audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+  const silBuf = audioCtx.createBuffer(1, audioCtx.sampleRate * 2, audioCtx.sampleRate);
+  const src = audioCtx.createBufferSource();
+  src.buffer = silBuf; src.loop = true;
+  const g = audioCtx.createGain(); g.gain.value = 0.00001;
+  src.connect(g); g.connect(audioCtx.destination);
+  src.start();
+}
+['touchstart','click','keydown'].forEach(ev =>
+  document.addEventListener(ev, ()=>{ try{ensureAudio();}catch(e){} }, {once:true, passive:true})
+);
+
+function playBeep() {
+  try {
+    ensureAudio();
+    const c = audioCtx; if(!c) return;
+    const t = c.currentTime + 0.01;
+    const master = c.createGain();
+    master.gain.setValueAtTime(0.001, t);
+    master.gain.linearRampToValueAtTime(1.0, t+0.02);
+    master.gain.linearRampToValueAtTime(0.0, t+0.55);
+    master.connect(c.destination);
+    [[320,880,0,0.20,'sine',0.5],[1100,1400,0.15,0.46,'sine',0.28],[2200,2000,0.20,0.55,'triangle',0.18]]
+    .forEach(([f0,f1,delay,stop,type,vol])=>{
+      const o=c.createOscillator(), g=c.createGain();
+      o.connect(g); g.connect(master); o.type=type;
+      o.frequency.setValueAtTime(f0,t+delay);
+      o.frequency.exponentialRampToValueAtTime(f1,t+stop-0.02);
+      g.gain.setValueAtTime(0,t+delay);
+      g.gain.linearRampToValueAtTime(vol,t+delay+0.05);
+      g.gain.exponentialRampToValueAtTime(0.001,t+stop);
+      o.start(t+delay); o.stop(t+stop+0.01);
+    });
+  } catch(e) {}
+}
+
+// ── TTS — interrumpible si detecta "iris" durante el habla ──
+let currentUtt = null;
+function speak(text, onEnd) {
+  tts.cancel();
+  currentUtt = new SpeechSynthesisUtterance(text);
+  const utt = currentUtt;
+  utt.lang='es-MX'; utt.rate=0.92; utt.pitch=1.05; utt.volume=1;
+  const voices = tts.getVoices();
+  const v = voices.find(v=>v.lang.startsWith('es')&&(v.name.includes('Google')||v.name.includes('Microsoft')))
+          ||voices.find(v=>v.lang.startsWith('es'));
+  if(v) utt.voice=v;
+  utt.onstart = ()=>{
+    mode='speaking'; setOrbState('speaking');
+    waveViz.classList.add('active');
+    statusText.textContent='hablando...';
+    // Parar cualquier rec activo (wake/convo) para que IRIS no se escuche a sí misma
+    if(rec){ try{rec.abort();}catch(e){} rec=null; }
+    // Arrancar escucha de interrupción en paralelo (solo detecta "iris" del usuario)
+    startInterruptListener();
+  };
+  const done = ()=>{
+    if(currentUtt !== utt) return; // ya fue interrumpida
+    stopInterruptListener();
+    mode='idle'; setOrbState('idle');
+    waveViz.classList.remove('active');
+    if(onEnd) onEnd();
+    else startConvo(); // modo conversación tras responder
+  };
+  utt.onend=done; utt.onerror=done;
+  tts.speak(utt);
+}
+
+// ── INTERRUPT LISTENER — escucha "iris" mientras IRIS habla ──
+let interruptRec = null;
+function startInterruptListener() {
+  if(interruptRec) return;
+  const SR = window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR) return;
+  const r = new SR();
+  r.lang='es-MX'; r.interimResults=true; r.continuous=!isMobile; r.maxAlternatives=1;
+  interruptRec = r;
+  r.onresult = (e) => {
+    let full='';
+    // Solo procesar resultados finales para evitar falsos positivos
+    // (ej: alguien dice "matricularía a Iris..." y no es activación)
+    for(let i=0;i<e.results.length;i++) full+=e.results[i][0].transcript;
+    const trimmed = full.trim();
+    // Verificar que "iris" aparezca como token de activación:
+    // - al inicio ("iris, ..."), o
+    // - el resultado es casi solo "iris" (isOnlyIris), o
+    // - resultado es final y contiene iris claramente
+    const isFinal = e.results[e.results.length-1]?.isFinal;
+    const mentionsIris = containsIris(trimmed);
+    const startsWithIris = /^(oye\s+)?iris\b/i.test(trimmed);
+    if(!mentionsIris) return;
+    if(!startsWithIris && !isFinal) return; // esperar confirmación final si iris no está al inicio
+    // Interrupción detectada — cortar TTS y activar
+    stopInterruptListener();
+    tts.cancel();
+    waveViz.classList.remove('active');
+    playBeep();
+    setOrbState('listening');
+    statusText.textContent='escuchando...';
+    showMsg(trimmed,'TÚ');
+    mode='idle';
+    // Lanzar con lo que ya oyó
+    const extra = stripIris(trimmed);
+    if(extra.length>2) {
+      setSilence(SILENCE_MS, ()=>{ mode='idle'; handleQuery(extra); });
+    } else {
+      // Solo el nombre → modo convo directo sin wake word
+      startConvo();
+    }
+  };
+  r.onend = () => {
+    // Si el modo sigue siendo speaking y no fue abortado, reiniciar en móvil
+    if(mode==='speaking' && isMobile) {
+      interruptRec=null;
+      setTimeout(startInterruptListener, 100);
+    } else {
+      interruptRec=null;
+    }
+  };
+  r.onerror = () => { interruptRec=null; };
+  try { r.start(); } catch(e) { interruptRec=null; }
+}
+
+function stopInterruptListener() {
+  if(!interruptRec) return;
+  try { interruptRec.abort(); } catch(e){}
+  interruptRec=null;
+}
+
+// ── GROQ — con retry automático (3 intentos, backoff 1s/2s) ──
+// ── RED — badge y detección ──
+const netBadge = document.getElementById('netBadge');
+function setNetBadge(state, msg) {
+  netBadge.className = state;
+  if(msg) netBadge.textContent = msg;
+}
+window.addEventListener('online',  () => setNetBadge('online'));
+window.addEventListener('offline', () => setNetBadge('offline', 'sin internet'));
+
+// ── GROQ ──
+async function askGroq(messages, attempt=1) {
+  try {
+    const res = await fetch(WORKER_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'llama-3.1-8b-instant', // modelo rápido, límites más altos
+        messages,
+        max_tokens: 300,
+        temperature: 0.7
+      })
+    });
+
+    // Rate limit — esperar y reintentar UNA sola vez con delay largo
+    if(res.status === 429) {
+      const retryAfter = parseInt(res.headers.get('retry-after') || '10', 10);
+      const wait = Math.max(retryAfter, 8) * 1000;
+      if(attempt === 1) {
+        setNetBadge('error', 'límite alcanzado, esperando...');
+        statusText.textContent = 'esperando límite...';
+        await new Promise(r => setTimeout(r, wait));
+        return askGroq(messages, 2);
+      }
+      throw new Error('rate_limit');
+    }
+
+    if(!res.ok) {
+      const err = await res.text().catch(()=>'');
+      throw new Error(`HTTP ${res.status}: ${err.slice(0,120)}`);
+    }
+
+    const data = await res.json();
+    const reply = data.choices?.[0]?.message?.content;
+    if(!reply) throw new Error('Respuesta vacía');
+    return reply;
+
+  } catch(e) {
+    console.error(`Groq intento ${attempt}:`, e.message);
+    if(e.message === 'rate_limit') {
+      setNetBadge('error', 'límite de API');
+      throw e;
+    }
+    // Error de red real — reintentar hasta 3 veces
+    if(attempt < 3) {
+      setNetBadge('error', `reintentando ${attempt}/3...`);
+      statusText.textContent = `reintentando ${attempt}/3...`;
+      await new Promise(r => setTimeout(r, attempt * 1500));
+      return askGroq(messages, attempt + 1);
+    }
+    setNetBadge('error', 'fallo servidor');
+    throw e;
+  }
+}
+
+// ── RESPUESTAS LOCALES — sin internet ──
+function localReply(text) {
+  const t = text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  const now = new Date();
+  const hora  = now.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'});
+  const fecha = now.toLocaleDateString('es-MX',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+
+  if(/\b(qu[eé] hora|hora es|dime la hora|son las)\b/.test(t))         return `Son las ${hora}.`;
+  if(/\b(qu[eé] d[ií]a|qu[eé] fecha|hoy es|d[ií]a es hoy|fecha de hoy)\b/.test(t)) return `Hoy es ${fecha}.`;
+  if(/\b(c[oó]mo (te llamas|eres|te defines)|qui[eé]n eres|presentate|tu nombre)\b/.test(t))
+    return 'Soy IRIS, tu asistente visual inteligente. Estoy aquí para ayudarte con lo que necesites.';
+  if(/\b(qui[eé]n (te (cre[oó]|hizo|program[oó]|dise[nñ][oó]))|qui[eé]n es (tu creador|missael|federico))\b/.test(t))
+    return 'Fui creada por Missael Castro, el principal idealista y programador del proyecto, junto con Federico Pizarro, desarrollador clave del equipo.';
+  if(/\b(integrantes|equipo|desarrolladores|miembros)\b/.test(t))
+    return 'El equipo detrás de mí es Missael Castro, líder del proyecto, y Federico Pizarro, desarrollador clave.';
+  if(/\b(qu[eé] puedes (hacer|ayudarme)|tus funciones|para qu[eé] sirves|qu[eé] haces)\b/.test(t))
+    return 'Puedo leer textos con la cámara, describir tu entorno, traducir idiomas en tiempo real y responder preguntas sobre documentos. Todo por voz.';
+  if(/\b(hola|buenos d[ií]as|buenas tardes|buenas noches|hey)\b/.test(t))
+    return '¡Hola! Aquí estoy. ¿En qué te puedo ayudar?';
+  if(/\b(gracias|muchas gracias)\b/.test(t))   return 'Con gusto. Estaré aquí cuando me necesites. FAREWELL';
+  if(/\b(adi[oó]s|hasta luego|nos vemos|bye)\b/.test(t)) return 'Hasta luego. Aquí estaré. FAREWELL';
+  if(/\b(c[oó]mo (est[aá]s|te encuentras|te va)|todo bien)\b/.test(t))
+    return 'Todo bien, lista para ayudarte. ¿Qué necesitas?';
+  if(/\b(sin internet|sin conexi[oó]n|modo offline|funciona sin)\b/.test(t))
+    return 'Sí. Sin internet puedo darte la hora, la fecha, presentarme y contarte sobre mis funciones. Para todo lo demás necesito conexión.';
+  return null;
+}
+
+// ── HANDLE QUERY ──
+async function handleQuery(text) {
+  if(!text.trim()) { startConvo(); return; }
+  clearSilence();
+  if(rec){ try{rec.abort();}catch(e){} rec=null; }
+  mode='processing';
+  setOrbState('thinking');
+  statusText.textContent='procesando...';
+  showMsg('', 'IRIS', true);
+
+  let reply;
+
+  // 1. ¿Tiene respuesta local?
+  const local = localReply(text);
+  if(local) {
+    reply = local;
+    conversationHistory.push({role:'user', content:text});
+    conversationHistory.push({role:'assistant', content:reply});
+    saveMemory();
+  } else {
+    // 2. Sin internet → avisar sin intentar Groq
+    if(!navigator.onLine) {
+      setNetBadge('offline','sin internet');
+      reply = 'No tengo internet ahora. Puedo ayudarte con la hora, la fecha o contarte sobre mis funciones sin conexión.';
+    } else {
+      // 3. Llamar a Groq
+      updateSystemPrompt();
+      conversationHistory.push({role:'user', content:text});
+      // Payload: system + últimos 12 mensajes
+      const system  = conversationHistory[0];
+      const recent  = conversationHistory.slice(1).slice(-12);
+      const payload = [system, ...recent];
+      try {
+        reply = await askGroq(payload);
+        conversationHistory.push({role:'assistant', content:reply});
+        saveMemory();
+        setNetBadge('online'); // limpiar badge si estaba en error
+      } catch(e) {
+        // Groq falló — retirar el push del usuario
+        conversationHistory.pop();
+        if(e.message === 'rate_limit') {
+          reply = 'Alcancé el límite de consultas por minuto. Espera unos segundos e intenta de nuevo.';
+        } else {
+          reply = 'No pude conectarme al servidor. Intenta de nuevo en un momento.';
+        }
+      }
+    }
+  }
+
+  thinkingDots.classList.remove('active');
+  const isFarewell = /FAREWELL/i.test(reply);
+  const cleanReply = reply.replace(/\s*FAREWELL\s*/gi,'').trim();
+  showMsg(cleanReply, 'IRIS');
+  if(isFarewell) {
+    speak(cleanReply, ()=>{
+      mode='idle'; setOrbState('idle');
+      statusText.textContent='di "IRIS" o toca el mic';
+      setTimeout(startWake, 300);
+    });
+  } else {
+    speak(cleanReply);
+  }
+}
+
+// ── REC FACTORY ──
+function newRec(continuous) {
+  const SR = window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR) return null;
+  const r = new SR();
+  r.lang='es-MX'; r.interimResults=true; r.maxAlternatives=1;
+  r.continuous=continuous;
+  return r;
+}
+
+// ── MODO CONVERSACIÓN — escucha libre sin wake word ──
+// Loop igual que wake: en móvil reinicia en onend hasta que alguien hable o expire el timer global.
+let convoDeadline = 0; // timestamp límite del modo convo
+
+function startConvo() {
+  if(!bienvenidaDone || (mode!=='idle' && mode!=='speaking')) return;
+  mode='convo';
+  setOrbState('listening');
+  statusText.textContent='¿algo más?';
+  // Solo actualizar el label, no borrar el texto de la respuesta anterior
+  transcriptLabel.textContent='IRIS';
+  convoDeadline = Date.now() + CONVO_MS; // ventana de 4s total
+
+  _convoLoop();
+}
+
+function _convoLoop() {
+  if(mode!=='convo') return;
+
+  // Si ya se acabó el tiempo global → volver a wake
+  const remaining = convoDeadline - Date.now();
+  if(remaining <= 0) {
+    mode='idle';
+    setOrbState('idle');
+    statusText.textContent='di "IRIS" o toca el mic';
+    setTimeout(startWake, 150);
+    return;
+  }
+
+  const r = newRec(false); // continuous=false, más fiable en móvil
+  if(!r) { mode='idle'; startWake(); return; }
+  rec=r;
+  let heard='';
+  let gotSpeech=false;
+
+  r.onresult=(e)=>{
+    let full='';
+    for(let i=0;i<e.results.length;i++) full+=e.results[i][0].transcript;
+    heard=full.trim();
+    if(heard.length>1){
+      gotSpeech=true;
+      showMsg(heard,'TÚ');
+      // Extender deadline mientras sigue hablando
+      setSilence(SILENCE_MS, ()=>{
+        if(mode!=='convo') return;
+        try{r.stop();}catch(e){}
+      });
+    }
+  };
+
+  r.onend=()=>{
+    clearSilence();
+    if(mode!=='convo') return;
+    if(gotSpeech && heard.length>1){
+      mode='idle';
+      const clean = containsIris(heard) ? stripIris(heard)||heard : heard;
+      handleQuery(clean);
+    } else {
+      // No habló en este ciclo — reiniciar si queda tiempo
+      setTimeout(_convoLoop, 80);
+    }
+  };
+
+  r.onerror=(e)=>{
+    clearSilence();
+    if(mode!=='convo') return;
+    if(e.error==='not-allowed'){ mode='idle'; statusText.textContent='permiso de micrófono denegado'; return; }
+    setTimeout(_convoLoop, 200);
+  };
+
+  try{ r.start(); }catch(e){ setTimeout(_convoLoop, 300); }
+}
+
+// ── WAKE LOOP — escucha pasiva esperando "iris" ──
+function startWake() {
+  if(!bienvenidaDone || mode!=='idle') return;
+  mode='wake';
+  statusText.textContent='di "IRIS" o toca el mic';
+  setOrbState('idle');
+  clearSilence();
+
+  const r = newRec(!isMobile);
+  if(!r) return;
+  rec=r;
+
+  let heard='';
+  let irisFound=false;
+  let hasQuestion=false;
+
+  const commit=()=>{ clearSilence(); if(mode!=='wake') return; try{r.stop();}catch(e){}};
+
+  r.onresult=(e)=>{
+    let full='';
+    for(let i=0;i<e.results.length;i++) full+=e.results[i][0].transcript;
+    full=full.trim(); heard=full;
+    if(!containsIris(full)) return;
+    // Solo activar si "iris" aparece al inicio, o si el resultado es final
+    const isFinal = e.results[e.results.length-1]?.isFinal;
+    const startsWithIris = /^(oye\s+)?iris\b/i.test(full);
+    if(!startsWithIris && !isFinal) return;
+    if(!irisFound){
+      irisFound=true;
+      playBeep();
+      setOrbState('listening');
+      statusText.textContent='escuchando...';
+      setSilence(ONLY_NAME_MS, commit);
+    }
+    // Solo mostrar lo que viene DESPUÉS de "iris", no el ruido previo
+    const extra=stripIris(full);
+    if(extra.length>2){
+      hasQuestion=true;
+      showMsg(extra,'TÚ'); // mostrar solo la pregunta, sin el nombre
+      setSilence(SILENCE_MS, commit);
+    } else {
+      showMsg('...','TÚ'); // solo dijo "iris", mostrar placeholder
+    }
+  };
+
+  const onDone=()=>{
+    clearSilence();
+    if(mode!=='wake') return;
+    mode='idle';
+    if(!irisFound){ setTimeout(startWake, isMobile?100:200); return; }
+    if(hasQuestion && stripIris(heard).length>2){
+      handleQuery(stripIris(heard));
+    } else {
+      // Solo dijo "iris" → entrar a modo conversación directo
+      playBeep();
+      startConvo();
+    }
+  };
+
+  r.onend=onDone;
+  r.onerror=(e)=>{
+    clearSilence();
+    if(mode!=='wake') return;
+    mode='idle';
+    if(e.error==='not-allowed'){ statusText.textContent='permiso de micrófono denegado'; return; }
+    setTimeout(startWake, isMobile?200:600);
+  };
+
+  try{ r.start(); }catch(e){ mode='idle'; setTimeout(startWake,500); }
+}
+
+// ── DIRECT MODE ──
+function startDirect() {
+  stopInterruptListener();
+  if(rec){ try{rec.abort();}catch(e){} rec=null; }
+  clearSilence();
+  mode='direct';
+
+  const r = newRec(true);
+  if(!r){ showMsg('Tu navegador no soporta voz. Usa Chrome.','AVISO'); mode='idle'; startWake(); return; }
+  rec=r; let heard='';
+
+  r.onstart=()=>{ playBeep(); setOrbState('listening'); statusText.textContent='escuchando...'; btnMic.classList.add('recording'); btnMic.textContent='⏹'; showMsg('...','TÚ'); };
+  r.onresult=(e)=>{
+    let full='';
+    for(let i=0;i<e.results.length;i++) full+=e.results[i][0].transcript;
+    heard=full.trim(); showMsg(heard,'TÚ');
+    setSilence(SILENCE_MS,()=>{ if(mode!=='direct') return; clearSilence(); try{r.stop();}catch(e){} });
+  };
+  const cleanup=()=>{ clearSilence(); btnMic.classList.remove('recording'); btnMic.textContent='🎙️'; };
+  r.onend=()=>{
+    cleanup(); if(mode!=='direct') return; mode='idle';
+    if(heard&&heard!=='...'){ const clean=containsIris(heard)?stripIris(heard)||heard:heard; handleQuery(clean); }
+    else { setOrbState('idle'); startWake(); }
+  };
+  r.onerror=()=>{ cleanup(); if(mode!=='direct') return; mode='idle'; setOrbState('idle'); startWake(); };
+  try{ r.start(); }catch(e){ mode='idle'; startWake(); }
+}
+
+// ── CONTROLS ──
+function toggleMic(){
+  if(mode==='speaking'){ tts.cancel(); return; }
+  if(mode==='direct'){ if(rec) try{rec.stop();}catch(e){} return; }
+  tts.cancel();
+  stopInterruptListener();
+  if(rec){ try{rec.abort();}catch(e){} rec=null; }
+  mode='idle'; startDirect();
+}
+function handleOrbClick(){ if(bienvenidaDone) toggleMic(); }
+function stopAll(){
+  tts.cancel(); clearSilence();
+  stopInterruptListener();
+  if(rec){ try{rec.abort();}catch(e){} rec=null; }
+  clearTimeout(wakeLoopTimer);
+  mode='idle'; setOrbState('idle'); waveViz.classList.remove('active');
+  btnMic.classList.remove('recording'); btnMic.textContent='🎙️';
+  statusText.textContent='di "IRIS" o toca el mic';
+  setTimeout(startWake, 400);
+}
+function askSuggestion(el){
+  if(!['idle','wake','convo'].includes(mode)) return;
+  stopInterruptListener();
+  if(rec){ try{rec.abort();}catch(e){} rec=null; }
+  mode='idle';
+  const text=el.textContent;
+  const clean=stripIris(text)||text;
+  showMsg(text,'TÚ');
+  handleQuery(clean);
+}
+
+// ── BIENVENIDA ──
+function bienvenida(){
+  const msg='Hola, soy IRIS, tu asistente visual inteligente. Di mi nombre en cualquier momento para activarme, o toca el micrófono para hablar directo. ¿En qué te puedo ayudar?';
+  showMsg(msg,'IRIS');
+  speak(msg, ()=>{
+    bienvenidaDone=true;
+    suggestions.classList.add('visible');
+    hint.style.opacity='0.4';
+    startWake();
+  });
+}
+
+// ── INIT ──
+window.addEventListener('load', ()=>{
+  statusText.textContent='iniciando...';
+  setOrbState('idle');
+  // Inicializar system prompt con hora actual (sin ubicación aún)
+  conversationHistory[0].content = buildSystemPrompt();
+  // Pedir ubicación en paralelo
+  requestLocation();
+  const go=()=>setTimeout(bienvenida, 800);
+  if(tts.getVoices().length>0) go();
+  else { tts.addEventListener('voiceschanged', go); setTimeout(go, 1200); }
+});
+</script>
+</body>
+</html>
