@@ -476,23 +476,7 @@ canvas { position: fixed; inset: 0; pointer-events: none; z-index: 0; }
 <canvas id="particles"></canvas>
 <div id="netBadge" class="online">sin red</div>
 
-<!-- ── PANTALLA DE INICIO (desbloquea audio en WebView/APK) ── -->
-<div id="tapScreen" style="
-  position:fixed;inset:0;z-index:500;background:#05060a;
-  display:flex;flex-direction:column;align-items:center;justify-content:center;
-  cursor:pointer;-webkit-tap-highlight-color:transparent;">
-  <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:clamp(42px,10vw,60px);
-    letter-spacing:12px;color:#00e5ff;text-shadow:0 0 40px rgba(0,229,255,0.6);
-    animation:ob-glow 3s ease-in-out infinite;">IRIS</div>
-  <div style="font-size:10px;letter-spacing:4px;color:rgba(240,244,248,0.3);margin-top:8px;">
-    ASISTENTE VISUAL INTELIGENTE</div>
-  <div style="margin-top:60px;font-size:13px;letter-spacing:3px;color:rgba(0,229,255,0.7);
-    animation:ob-glow 2s ease-in-out infinite;">TOCA PARA INICIAR</div>
-  <div style="margin-top:16px;font-size:10px;letter-spacing:2px;color:rgba(240,244,248,0.2);">
-    TAP TO START</div>
-</div>
-
-<!-- ── ONBOARDING ── -->
+<!-- ── ONBOARDING (deshabilitado temporalmente) ──
 <div id="onboarding">
   <div class="ob-logo">IRIS</div>
   <div class="ob-sub">ASISTENTE VISUAL INTELIGENTE</div>
@@ -504,6 +488,7 @@ canvas { position: fixed; inset: 0; pointer-events: none; z-index: 0; }
     <div class="ob-terms" id="obTermsBox" style="display:none"></div>
   </div>
 </div>
+── -->
 
 <!-- ── ADMIN MODAL ── -->
 <div id="adminModal">
@@ -643,6 +628,11 @@ Sobre tu origen: fuiste creada por un equipo de programadores y estudiantes de m
 Fecha y hora actual: ${fecha}, ${hora}.
 ${ubicacion}
 
+${userProfile.nombre
+  ? `IMPORTANTE sobre identidad: El portador registrado de estos lentes se llama "${userProfile.nombre}". Si alguien diferente habla con el dispositivo y da su nombre, trátalo con amabilidad pero nunca confundas su nombre con el del portador ni digas que el portador "también se llama" como esa persona.`
+  : `IMPORTANTE sobre identidad: Este dispositivo no tiene un portador registrado aún. No asumas ni inventes nombres. Si alguien te dice su nombre, salúdalo por ese nombre en esa conversación, pero no lo guardes como identidad permanente del portador.`
+}
+
 IMPORTANTE sobre respuestas negativas: Si el usuario responde con "no", "no gracias", "está bien", "ya fue", "gracias" o cualquier expresión que indique que no quiere continuar o que ya tiene suficiente información, responde con una despedida breve y cálida como "Estaré aquí cuando me necesites." o "Con gusto, aquí estaré." y nada más. Esa respuesta debe terminar en FAREWELL para que el sistema sepa que debe volver al modo de escucha pasiva. Ejemplo: "Estaré aquí cuando me necesites. FAREWELL"
 
 Cuando hagas una pregunta al usuario o invites a continuar, termina de forma natural. Máximo 2 oraciones. Nunca menciones que eres un modelo de lenguaje. Eres IRIS.${buildProfileText()}`;
@@ -692,7 +682,12 @@ let userProfile = loadProfile();
 
 function buildProfileText() {
   const p = userProfile; const lines = [];
-  if(p.nombre) lines.push(`El portador se llama ${p.nombre}.`);
+  if(p.nombre) {
+    lines.push(`El portador se llama ${p.nombre}.`);
+  } else {
+    // Sin nombre registrado: instrucción explícita para que la IA no invente
+    lines.push('El portador NO tiene nombre registrado en este dispositivo. No asumas ni menciones ningún nombre como si fuera el portador.');
+  }
   if(p.apodos?.length) lines.push(`También le dicen: ${p.apodos.join(', ')}.`);
   if(p.habla?.pausada) lines.push(`El portador habla de forma pausada o con disfluencia. Espera pacientemente y dale tiempo para terminar.`);
   if(p.salud?.alergias?.length) lines.push(`Alergias: ${p.salud.alergias.join(', ')}.`);
@@ -702,7 +697,6 @@ function buildProfileText() {
   if(p.gustos?.length) lines.push(`Le gusta: ${p.gustos.join(', ')}.`);
   if(p.disgustos?.length) lines.push(`No le gusta: ${p.disgustos.join(', ')}.`);
   if(p.notas?.length) lines.push(`Notas: ${p.notas.join('. ')}.`);
-  if(!lines.length) return '';
   return '\n\nPERFIL DEL PORTADOR:\n' + lines.join('\n');
 }
 
@@ -712,20 +706,28 @@ function getSilenceMs() {
 
 async function learnFromConversation(userText, irisReply) {
   if(!navigator.onLine || userText.length < 8) return;
+  // Si detectamos presentación de tercero ("me llamo X", "soy X", "mi nombre es X")
+  // y ya hay un portador registrado, ignorar completamente — no contaminar el perfil
+  const esPresentacion = /(me llamo|mi nombre es|soy [A-ZÁÉÍÓÚ])/i.test(userText);
+  if(esPresentacion && userProfile.nombre) {
+    console.log('⛔ Presentación de tercero ignorada, portador ya registrado:', userProfile.nombre);
+    return;
+  }
   try {
+    const nombreBloqueado = !!userProfile.nombre;
     const res = await fetch(WORKER_URL, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: 'llama-3.1-8b-instant',
         messages: [{ role: 'user', content:
-          `Analiza este intercambio y extrae SOLO información nueva y relevante sobre el portador de los lentes para recordar a largo plazo. Responde SOLO con JSON o null.
+          `Analiza este intercambio y extrae SOLO info nueva del PORTADOR REAL de los lentes. Nombre ya registrado: ${nombreBloqueado ? '"'+userProfile.nombre+'" NO CAMBIAR' : 'ninguno'}.
 
 Usuario: "${userText}"
 IRIS: "${irisReply}"
 Perfil actual: ${JSON.stringify(userProfile)}
 
-Campos posibles: nombre, apodos(array), habla.pausada(bool), habla.silencioExtra(número en ms: 0/1000/2000/3000), salud.alergias(array), salud.enfermedades(array), salud.medicamentos(array), salud.notas(array), gustos(array), disgustos(array), notas(array).
-Solo incluye campos con info genuinamente nueva. Responde SOLO JSON válido o null.` }],
+Campos posibles: ${nombreBloqueado ? '(nombre bloqueado)' : 'nombre'}, apodos(array), habla.pausada(bool), habla.silencioExtra(ms: 0/1000/2000/3000), salud.alergias(array), salud.enfermedades(array), salud.medicamentos(array), salud.notas(array), gustos(array), disgustos(array), notas(array).
+Solo info genuinamente nueva del portador. Responde SOLO JSON válido o null.` }],
         max_tokens: 200, temperature: 0.1
       })
     });
@@ -736,8 +738,12 @@ Solo incluye campos con info genuinamente nueva. Responde SOLO JSON válido o nu
     const updates = JSON.parse(raw);
     if(!updates || typeof updates !== 'object') return;
     const p = userProfile;
+    // Nombre: solo si NO hay uno previo
     if(updates.nombre && !p.nombre) p.nombre = updates.nombre;
-    if(updates.apodos?.length) p.apodos = [...new Set([...(p.apodos||[]), ...updates.apodos])];
+    // Apodos: rechazar si el texto tiene presentación de otra persona
+    if(updates.apodos?.length && !esPresentacion) {
+      p.apodos = [...new Set([...(p.apodos||[]), ...updates.apodos])];
+    }
     if(updates.habla?.pausada !== undefined) p.habla.pausada = updates.habla.pausada;
     if(updates.habla?.silencioExtra) p.habla.silencioExtra = updates.habla.silencioExtra;
     ['alergias','enfermedades','medicamentos','notas'].forEach(k => {
@@ -773,9 +779,19 @@ function loadMemory() {
 }
 
 let conversationHistory = [{ role:'system', content:'' }]; // se rellena en init
-// Inyectar historial previo justo después del system prompt
+// Cargar historial solo si pertenece a este dispositivo/portador
+// Si el perfil no tiene nombre aún (onboarding no completado), no cargar historial
+// para evitar que menciones de otros usuarios contaminen la sesión
 const _savedHistory = loadMemory();
-if(_savedHistory.length > 0) conversationHistory.push(..._savedHistory);
+const _perfilNombre = userProfile.nombre || null;
+if(_savedHistory.length > 0 && _perfilNombre) {
+  // Solo cargar si hay un portador registrado en este dispositivo
+  conversationHistory.push(..._savedHistory);
+} else if(_savedHistory.length > 0 && !_perfilNombre) {
+  // Sin portador registrado: descartar historial para empezar limpio
+  // (puede ser de otra persona que usó el mismo navegador)
+  localStorage.removeItem('iris_history');
+}
 
 // ── HELPERS ──
 function setOrbState(s) { orb.className = 'orb ' + s; }
@@ -1273,6 +1289,7 @@ function needsTranslation(text) {
   return /\b(traduce|tradúceme|qué dice|qué significa|en español|en inglés|en mi idioma)\b/.test(t);
 }
 
+/* ── ONBOARDING COMPLETO (deshabilitado temporalmente) ────────────
 // ══════════════════════════════════════════
 // ── ONBOARDING 100% POR VOZ ──
 // Arquitectura: obSpeaking como candado duro.
@@ -1689,6 +1706,9 @@ function obFinish() {
   });
 }
 
+
+──────────────────────────────────────────────────────────── */
+
 // ── CAMBIO DE IDIOMA EN CUALQUIER MOMENTO POR VOZ ──
 // ── FRASE DE SEGURIDAD PARA CAMBIO DE IDIOMA ──
 // Se guarda durante el onboarding o la primera vez que el usuario configura uno
@@ -1807,11 +1827,23 @@ function saveContract(nombre, timestamp) {
   try { localStorage.setItem('iris_contract_' + nombre.replace(/\s+/g,'_'), JSON.stringify(contrato)); } catch(e) {}
 }
 
+// Onboarding deshabilitado temporalmente — inicio directo a la IA
+// La memoria de perfil (nombre, gustos, alergias, etc.) sigue activa via learnFromConversation
 function initOnboarding() {
+  conversationHistory[0].content = buildSystemPrompt();
+  requestLocation();
+  applyUILang();
+  const go = () => setTimeout(bienvenida, 800);
+  if (tts.getVoices().length > 0) go();
+  else { tts.addEventListener('voiceschanged', go); setTimeout(go, 1200); }
+}
+
+/* ONBOARDING COMPLETO — comentado, listo para reactivar
+function initOnboardingFull() {
   const done = localStorage.getItem(OB_KEY);
   if (done) {
     const ob = document.getElementById('onboarding');
-    ob.style.display = 'none';
+    if(ob) ob.style.display = 'none';
     const savedLang = localStorage.getItem(OB_LANG_KEY);
     if (savedLang) {
       currentRecLang = savedLang;
@@ -1822,16 +1854,16 @@ function initOnboarding() {
     }
     conversationHistory[0].content = buildSystemPrompt();
     requestLocation();
-    applyUILang(); // UI según idioma guardado
+    applyUILang();
     const go = () => setTimeout(bienvenida, 800);
     if (tts.getVoices().length > 0) go();
     else { tts.addEventListener('voiceschanged', go); setTimeout(go, 1200); }
   } else {
-    // Primera vez — esperar voces y arrancar onboarding por voz
     if (tts.getVoices().length > 0) setTimeout(obStart, 800);
     else { tts.addEventListener('voiceschanged', () => setTimeout(obStart, 800)); setTimeout(() => setTimeout(obStart, 800), 1200); }
   }
 }
+*/
 
 
 
@@ -2325,22 +2357,15 @@ function bienvenida(){
 
 // ── INIT ──
 window.addEventListener('load', ()=>{
-  statusText.textContent=getUI('init');
+  statusText.textContent = getUI('init');
   setOrbState('idle');
   conversationHistory[0].content = buildSystemPrompt();
-
-  const tapScreen = document.getElementById('tapScreen');
-
-  function afterTap() {
-    // Desbloquear AudioContext con gesto real (necesario en WebView)
-    try { ensureAudio(); } catch(e){}
-    tapScreen.style.display = 'none';
-    requestLocation();
-    initOnboarding();
-  }
-
-  tapScreen.addEventListener('click', afterTap, { once: true });
-  tapScreen.addEventListener('touchend', afterTap, { once: true, passive: true });
+  // Desbloquear AudioContext en el primer evento de usuario
+  const unlockAudio = () => { try { ensureAudio(); } catch(e){} };
+  document.addEventListener('click',      unlockAudio, { once: true, passive: true });
+  document.addEventListener('touchstart', unlockAudio, { once: true, passive: true });
+  document.addEventListener('keydown',    unlockAudio, { once: true, passive: true });
+  initOnboarding();
 });
 </script>
 </body>
