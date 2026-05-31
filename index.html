@@ -1326,6 +1326,9 @@ function obSpeak(text, lang, onEnd) {
   const estMs = Math.max(1200, (text.length / charsPerSec) * 1000 / 0.88);
   const marginMs = isMobile ? 1400 : 300;
 
+  // FIX: guardar el momento en que empieza a hablar para detectar falso onend
+  const startTime = Date.now();
+
   let fired = false;
   const fireEnd = () => {
     if (fired) return;
@@ -1336,7 +1339,13 @@ function obSpeak(text, lang, onEnd) {
 
   // Fallback: si onend no llega (bug Android), disparar por tiempo
   const fallback = setTimeout(fireEnd, estMs + marginMs + 500);
-  utt.onend  = () => { clearTimeout(fallback); setTimeout(fireEnd, isMobile ? marginMs : 100); };
+  utt.onend  = () => {
+    // FIX: ignorar si el onend llegó antes del 60% del tiempo estimado (falso onend Android)
+    const elapsed = Date.now() - startTime;
+    if (isMobile && elapsed < estMs * 0.6) return;
+    clearTimeout(fallback);
+    setTimeout(fireEnd, isMobile ? marginMs : 100);
+  };
   utt.onerror= () => { clearTimeout(fallback); setTimeout(fireEnd, 200); };
 
   tts.speak(utt);
@@ -1398,8 +1407,14 @@ function obListen(lang, onResult, onEmpty, timeoutMs) {
     r.onend  = () => { if (!fired) done(heard || null); };
     r.onerror= e  => {
       if (e.error === 'aborted') return;
-      if (e.error === 'no-speech') { done(null); return; }
-      done(null);
+      // FIX: detener bucle destructivo si no hay permisos de micrófono
+      if (e.error === 'not-allowed') {
+        document.getElementById('obHint').textContent = '⚠️ SIN PERMISO DE MICRÓFONO';
+        return; // no llamar done() para no relanzar el onboarding en bucle
+      }
+      // FIX: pequeña pausa antes de reintentar para no saturar el móvil
+      if (e.error === 'no-speech') { setTimeout(() => done(null), 1000); return; }
+      setTimeout(() => done(null), 1000);
     };
 
     try { r.start(); } catch(e) { done(null); }
