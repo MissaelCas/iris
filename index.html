@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>IRIS</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%2305060a' stroke='%2300e5ff' stroke-width='2'/%3E%3Ctext x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='sans-serif' font-weight='900' font-size='22' fill='%2300e5ff' letter-spacing='3'%3EIRIS%3C/text%3E%3C/svg%3E">
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -343,6 +344,122 @@ body {
 
 canvas { position: fixed; inset: 0; pointer-events: none; z-index: 0; }
 
+/* ── TRANSCRIPT — sin scrollbar visible ── */
+.transcript {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.transcript::-webkit-scrollbar { display: none; }
+
+/* ── ONBOARDING OVERLAY ── */
+#onboarding {
+  position: fixed; inset: 0; z-index: 200;
+  background: #05060a;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 40px 28px; text-align: center;
+  transition: opacity 0.6s;
+}
+#onboarding.hidden { opacity: 0; pointer-events: none; }
+
+.ob-logo {
+  font-family: 'Syne', sans-serif;
+  font-weight: 800; font-size: clamp(36px,9vw,54px);
+  letter-spacing: 12px; color: #00e5ff;
+  text-shadow: 0 0 40px rgba(0,229,255,0.5);
+  margin-bottom: 6px;
+  animation: ob-glow 3s ease-in-out infinite;
+}
+@keyframes ob-glow {
+  0%,100% { text-shadow: 0 0 40px rgba(0,229,255,0.4); }
+  50%      { text-shadow: 0 0 80px rgba(0,229,255,0.8); }
+}
+.ob-sub { font-size: 9px; letter-spacing: 4px; color: rgba(240,244,248,0.3); margin-bottom: 48px; }
+
+.ob-step { display: none; flex-direction: column; align-items: center; gap: 14px; width: 100%; max-width: 360px; }
+.ob-step.active { display: flex; animation: ob-fadein 0.4s ease; }
+@keyframes ob-fadein { from { opacity:0; transform: translateY(16px); } to { opacity:1; transform:none; } }
+
+.ob-icon   { font-size: 44px; margin-bottom: 4px; }
+.ob-q      { font-family: 'Syne', sans-serif; font-size: clamp(17px,4.5vw,22px); font-weight:700; color:#f0f4f8; line-height:1.4; }
+.ob-hint   { font-size: 10px; letter-spacing: 2px; color: rgba(240,244,248,0.3); line-height:1.7; }
+
+.ob-options { display: flex; flex-direction: column; gap: 10px; width: 100%; margin-top: 6px; }
+.ob-opt {
+  background: rgba(0,229,255,0.04); border: 1px solid rgba(0,229,255,0.12);
+  border-radius: 12px; padding: 14px 18px; cursor: pointer;
+  font-size: 13px; color: rgba(240,244,248,0.7);
+  display: flex; align-items: center; gap: 12px;
+  transition: all 0.2s; text-align: left;
+  -webkit-tap-highlight-color: transparent;
+}
+.ob-opt:hover, .ob-opt.sel {
+  border-color: rgba(0,229,255,0.5);
+  background: rgba(0,229,255,0.08); color: #00e5ff;
+}
+
+.ob-btn {
+  margin-top: 16px; padding: 14px 36px;
+  background: #00e5ff; color: #050608;
+  border: none; border-radius: 10px;
+  font-family: 'Syne', sans-serif; font-weight: 700;
+  font-size: 13px; letter-spacing: 3px; cursor: pointer;
+  transition: all 0.2s; -webkit-tap-highlight-color: transparent;
+}
+.ob-btn:hover { transform: scale(1.03); box-shadow: 0 0 24px rgba(0,229,255,0.35); }
+
+/* Términos */
+.ob-terms {
+  background: rgba(0,229,255,0.03); border: 1px solid rgba(0,229,255,0.1);
+  border-radius: 14px; padding: 16px 18px;
+  font-size: 11px; color: rgba(240,244,248,0.5);
+  line-height: 1.8; max-height: 220px; overflow-y: auto;
+  text-align: left; width: 100%;
+  scrollbar-width: none;
+}
+.ob-terms::-webkit-scrollbar { display: none; }
+
+/* ── ADMIN MODAL ── */
+#adminModal {
+  display: none; position: fixed; inset: 0; z-index: 300;
+  background: rgba(5,6,10,0.96);
+  align-items: center; justify-content: center;
+  flex-direction: column; gap: 16px; padding: 32px;
+}
+#adminModal.open { display: flex; }
+.adm-title { font-family:'Syne',sans-serif; font-size:18px; font-weight:700; letter-spacing:4px; color:#00e5ff; }
+.adm-input {
+  background: rgba(0,229,255,0.05); border: 1px solid rgba(0,229,255,0.2);
+  border-radius: 10px; padding: 12px 18px; color: #f0f4f8;
+  font-size: 18px; letter-spacing: 6px; text-align: center;
+  outline: none; width: 200px; font-family:'Syne',sans-serif;
+}
+.adm-btn {
+  padding: 12px 32px; background: transparent;
+  border: 1px solid rgba(0,229,255,0.3); border-radius: 10px;
+  color: #00e5ff; font-family:'Syne',sans-serif;
+  font-size: 12px; letter-spacing: 3px; cursor: pointer;
+  transition: all 0.2s;
+}
+.adm-btn:hover { background: rgba(0,229,255,0.08); }
+.adm-close { font-size: 11px; letter-spacing: 2px; color: rgba(240,244,248,0.2); cursor: pointer; margin-top:8px; }
+
+/* ── LONG PRESS RING ── */
+#pressRing {
+  position: absolute; inset: -6px;
+  border-radius: 50%; pointer-events: none;
+  border: 2px solid rgba(0,229,255,0);
+  transition: border-color 0.2s;
+}
+#pressRing.pressing {
+  border-color: rgba(0,229,255,0.5);
+  animation: press-fill 3s linear forwards;
+}
+@keyframes press-fill {
+  0%   { box-shadow: 0 0 0 0px rgba(0,229,255,0.15); }
+  100% { box-shadow: 0 0 0 8px rgba(0,229,255,0); }
+}
+
 /* pantallas muy pequeñas */
 @media (max-height: 600px) {
   .orb-wrap { margin-bottom: 18px; }
@@ -359,6 +476,27 @@ canvas { position: fixed; inset: 0; pointer-events: none; z-index: 0; }
 <canvas id="particles"></canvas>
 <div id="netBadge" class="online">sin red</div>
 
+<!-- ── ONBOARDING — solo visual mínimo, todo por voz ── -->
+<div id="onboarding">
+  <div class="ob-logo">IRIS</div>
+  <div class="ob-sub">ASISTENTE VISUAL INTELIGENTE</div>
+  <div class="ob-step active" id="ob1">
+    <div class="ob-icon" id="obIcon">👋</div>
+    <div class="ob-q" id="obQuestion">Iniciando configuración...</div>
+    <div class="ob-hint" id="obHint">RESPONDE CON TU VOZ</div>
+    <div class="ob-terms" id="obTermsBox" style="display:none"></div>
+  </div>
+</div>
+
+<!-- ── ADMIN MODAL ── -->
+<div id="adminModal">
+  <div class="adm-title">ACCESO ADMINISTRADOR</div>
+  <div style="font-size:10px;letter-spacing:2px;color:rgba(240,244,248,0.3)">INGRESA LA CONTRASEÑA POR VOZ O TECLADO</div>
+  <input id="admPass" class="adm-input" type="password" placeholder="• • •" autocomplete="off">
+  <button class="adm-btn" onclick="admVerify()">VERIFICAR</button>
+  <div class="adm-close" onclick="admClose()">CANCELAR</div>
+</div>
+
 <div class="container">
   <div class="orb-wrap">
     <div class="ring ring-3"></div>
@@ -366,6 +504,7 @@ canvas { position: fixed; inset: 0; pointer-events: none; z-index: 0; }
     <div class="ring ring-1"></div>
     <div class="orb idle" id="orb" onclick="handleOrbClick()">
       <span class="orb-logo">IRIS</span>
+      <div id="pressRing"></div>
     </div>
     <div class="wave-viz" id="waveViz">
       <div class="wv-bar"></div><div class="wv-bar"></div><div class="wv-bar"></div>
@@ -468,9 +607,15 @@ function buildSystemPrompt() {
     ? `La ubicación actual del dispositivo es: latitud ${deviceLocation.lat.toFixed(5)}, longitud ${deviceLocation.lng.toFixed(5)}. Puedes usar esta información para mencionar lugares, servicios o puntos de interés cercanos cuando sea relevante.`
     : 'No tienes acceso a la ubicación del dispositivo en este momento.';
 
+  const activeLangCode = getLangProfile().preferido || 'es-MX';
+  const activeLangName = Object.values(IDIOMAS).find(i=>i.code===activeLangCode)?.nombre || 'español';
+  const langInstruction = activeLangCode.startsWith('es')
+    ? 'Hablas en español mexicano natural y fluido.'
+    : `IMPORTANTE: El usuario configuró su idioma preferido como ${activeLangName}. DEBES responder SIEMPRE en ${activeLangName}. No respondas en español a menos que el usuario te lo pida explícitamente.`;
+
   return `Eres IRIS, un asistente de voz inteligente integrada en unos lentes de asistencia visual diseñados para personas con discapacidad visual en México y Latinoamérica. Tu nombre viene de la parte del ojo que controla la visión.
 
-Tu personalidad: cálida, clara, concisa y empática. Hablas en español mexicano natural y fluido. Nunca usas listas con guiones ni asteriscos porque tu respuesta se convierte directamente en voz. Solo hablas en oraciones cortas y naturales, como en una conversación real.
+Tu personalidad: cálida, clara, concisa y empática. ${langInstruction} Nunca usas listas con guiones ni asteriscos porque tu respuesta se convierte directamente en voz. Solo hablas en oraciones cortas y naturales, como en una conversación real.
 
 Tus funciones: leer texto con la cámara, describir el entorno con objetos y distancias, traducir entre idiomas en tiempo real, responder preguntas de libros y documentos, activar modo seguro para medicamentos. Funciona por voz y gestos, modo offline disponible. Diseñada para México incluyendo comunidades rurales e indígenas.
 
@@ -483,7 +628,7 @@ ${ubicacion}
 
 IMPORTANTE sobre respuestas negativas: Si el usuario responde con "no", "no gracias", "está bien", "ya fue", "gracias" o cualquier expresión que indique que no quiere continuar o que ya tiene suficiente información, responde con una despedida breve y cálida como "Estaré aquí cuando me necesites." o "Con gusto, aquí estaré." y nada más. Esa respuesta debe terminar en FAREWELL para que el sistema sepa que debe volver al modo de escucha pasiva. Ejemplo: "Estaré aquí cuando me necesites. FAREWELL"
 
-Cuando hagas una pregunta al usuario o invites a continuar, termina de forma natural. Máximo 2 oraciones. Nunca menciones que eres un modelo de lenguaje. Eres IRIS.`;
+Cuando hagas una pregunta al usuario o invites a continuar, termina de forma natural. Máximo 2 oraciones. Nunca menciones que eres un modelo de lenguaje. Eres IRIS.${buildProfileText()}`;
 }
 
 let deviceLocation = null;
@@ -506,6 +651,87 @@ function updateSystemPrompt() {
   if(conversationHistory.length > 0 && conversationHistory[0].role === 'system') {
     conversationHistory[0].content = buildSystemPrompt();
   }
+}
+
+// ── PERFIL DEL PORTADOR ──
+const PROFILE_KEY = 'iris_profile';
+const PROFILE_DEFAULT = {
+  nombre: null, apodos: [],
+  habla: { pausada: false, silencioExtra: 0 },
+  salud: { alergias: [], enfermedades: [], medicamentos: [], notas: [] },
+  gustos: [], disgustos: [], notas: [], ultimaActualizacion: null
+};
+function loadProfile() {
+  try {
+    const raw = localStorage.getItem(PROFILE_KEY);
+    if(!raw) return JSON.parse(JSON.stringify(PROFILE_DEFAULT));
+    return Object.assign(JSON.parse(JSON.stringify(PROFILE_DEFAULT)), JSON.parse(raw));
+  } catch(e) { return JSON.parse(JSON.stringify(PROFILE_DEFAULT)); }
+}
+function saveProfile(p) {
+  try { p.ultimaActualizacion = new Date().toISOString(); localStorage.setItem(PROFILE_KEY, JSON.stringify(p)); } catch(e) {}
+}
+let userProfile = loadProfile();
+
+function buildProfileText() {
+  const p = userProfile; const lines = [];
+  if(p.nombre) lines.push(`El portador se llama ${p.nombre}.`);
+  if(p.apodos?.length) lines.push(`También le dicen: ${p.apodos.join(', ')}.`);
+  if(p.habla?.pausada) lines.push(`El portador habla de forma pausada o con disfluencia. Espera pacientemente y dale tiempo para terminar.`);
+  if(p.salud?.alergias?.length) lines.push(`Alergias: ${p.salud.alergias.join(', ')}.`);
+  if(p.salud?.enfermedades?.length) lines.push(`Condiciones de salud: ${p.salud.enfermedades.join(', ')}.`);
+  if(p.salud?.medicamentos?.length) lines.push(`Medicamentos: ${p.salud.medicamentos.join(', ')}.`);
+  if(p.salud?.notas?.length) lines.push(`Notas de salud: ${p.salud.notas.join('. ')}.`);
+  if(p.gustos?.length) lines.push(`Le gusta: ${p.gustos.join(', ')}.`);
+  if(p.disgustos?.length) lines.push(`No le gusta: ${p.disgustos.join(', ')}.`);
+  if(p.notas?.length) lines.push(`Notas: ${p.notas.join('. ')}.`);
+  if(!lines.length) return '';
+  return '\n\nPERFIL DEL PORTADOR:\n' + lines.join('\n');
+}
+
+function getSilenceMs() {
+  return SILENCE_MS + (userProfile?.habla?.silencioExtra || 0);
+}
+
+async function learnFromConversation(userText, irisReply) {
+  if(!navigator.onLine || userText.length < 8) return;
+  try {
+    const res = await fetch(WORKER_URL, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'llama-3.1-8b-instant',
+        messages: [{ role: 'user', content:
+          `Analiza este intercambio y extrae SOLO información nueva y relevante sobre el portador de los lentes para recordar a largo plazo. Responde SOLO con JSON o null.
+
+Usuario: "${userText}"
+IRIS: "${irisReply}"
+Perfil actual: ${JSON.stringify(userProfile)}
+
+Campos posibles: nombre, apodos(array), habla.pausada(bool), habla.silencioExtra(número en ms: 0/1000/2000/3000), salud.alergias(array), salud.enfermedades(array), salud.medicamentos(array), salud.notas(array), gustos(array), disgustos(array), notas(array).
+Solo incluye campos con info genuinamente nueva. Responde SOLO JSON válido o null.` }],
+        max_tokens: 200, temperature: 0.1
+      })
+    });
+    if(!res.ok) return;
+    const data = await res.json();
+    const raw = data.choices?.[0]?.message?.content?.trim().replace(/```json|```/g,'').trim();
+    if(!raw || raw === 'null') return;
+    const updates = JSON.parse(raw);
+    if(!updates || typeof updates !== 'object') return;
+    const p = userProfile;
+    if(updates.nombre && !p.nombre) p.nombre = updates.nombre;
+    if(updates.apodos?.length) p.apodos = [...new Set([...(p.apodos||[]), ...updates.apodos])];
+    if(updates.habla?.pausada !== undefined) p.habla.pausada = updates.habla.pausada;
+    if(updates.habla?.silencioExtra) p.habla.silencioExtra = updates.habla.silencioExtra;
+    ['alergias','enfermedades','medicamentos','notas'].forEach(k => {
+      if(updates.salud?.[k]?.length) p.salud[k] = [...new Set([...p.salud[k], ...updates.salud[k]])];
+    });
+    if(updates.gustos?.length) p.gustos = [...new Set([...(p.gustos||[]), ...updates.gustos])];
+    if(updates.disgustos?.length) p.disgustos = [...new Set([...(p.disgustos||[]), ...updates.disgustos])];
+    if(updates.notas?.length) p.notas = [...new Set([...(p.notas||[]), ...updates.notas])];
+    saveProfile(p); userProfile = p;
+    console.log('✅ Perfil actualizado:', p);
+  } catch(e) { /* silencioso */ }
 }
 
 // ── MEMORIA — cargar historial guardado (máx 20 turnos para no saturar) ──
@@ -597,15 +823,21 @@ function speak(text, onEnd) {
   tts.cancel();
   currentUtt = new SpeechSynthesisUtterance(text);
   const utt = currentUtt;
-  utt.lang='es-MX'; utt.rate=0.92; utt.pitch=1.05; utt.volume=1;
+  const activeLang = getLangProfile().preferido || currentRecLang || 'es-MX';
+  utt.lang = activeLang; utt.rate=0.92; utt.pitch=1.05; utt.volume=1;
   const voices = tts.getVoices();
-  const v = voices.find(v=>v.lang.startsWith('es')&&(v.name.includes('Google')||v.name.includes('Microsoft')))
+  const prefix = activeLang.split('-')[0];
+  const v = voices.find(v=>v.lang.startsWith(prefix)&&(v.name.includes('Google')||v.name.includes('Microsoft')))
+          ||voices.find(v=>v.lang.startsWith(prefix))
           ||voices.find(v=>v.lang.startsWith('es'));
   if(v) utt.voice=v;
   utt.onstart = ()=>{
     mode='speaking'; setOrbState('speaking');
     waveViz.classList.add('active');
-    statusText.textContent='hablando...';
+    statusText.textContent=getUI('speaking');
+    // Estimar duración: ~13 chars/segundo a rate 0.92
+    const estDuration = Math.max(2000, (text.length / 13) * 1000 / 0.92);
+    startSyncScroll(text, estDuration);
     // Parar cualquier rec activo (wake/convo) para que IRIS no se escuche a sí misma
     if(rec){ try{rec.abort();}catch(e){} rec=null; }
     // Arrancar escucha de interrupción en paralelo (solo detecta "iris" del usuario)
@@ -613,6 +845,7 @@ function speak(text, onEnd) {
   };
   const done = ()=>{
     if(currentUtt !== utt) return; // ya fue interrumpida
+    stopSyncScroll();
     stopInterruptListener();
     mode='idle'; setOrbState('idle');
     waveViz.classList.remove('active');
@@ -653,13 +886,13 @@ function startInterruptListener() {
     waveViz.classList.remove('active');
     playBeep();
     setOrbState('listening');
-    statusText.textContent='escuchando...';
-    showMsg(trimmed,'TÚ');
+    statusText.textContent=getUI('listening');
+    showMsg(trimmed,getUI('youLabel'));
     mode='idle';
     // Lanzar con lo que ya oyó
     const extra = stripIris(trimmed);
     if(extra.length>2) {
-      setSilence(SILENCE_MS, ()=>{ mode='idle'; handleQuery(extra); });
+      setSilence(getSilenceMs(), ()=>{ mode='idle'; handleQuery(extra); });
     } else {
       // Solo el nombre → modo convo directo sin wake word
       startConvo();
@@ -714,7 +947,7 @@ async function askGroq(messages, attempt=1) {
       const wait = Math.max(retryAfter, 8) * 1000;
       if(attempt === 1) {
         setNetBadge('error', 'límite alcanzado, esperando...');
-        statusText.textContent = 'esperando límite...';
+        statusText.textContent=getUI('rateLimit');
         await new Promise(r => setTimeout(r, wait));
         return askGroq(messages, 2);
       }
@@ -722,8 +955,10 @@ async function askGroq(messages, attempt=1) {
     }
 
     if(!res.ok) {
-      const err = await res.text().catch(()=>'');
-      throw new Error(`HTTP ${res.status}: ${err.slice(0,120)}`);
+      const err = await res.text().catch(()=>'sin detalle');
+      const msg = `HTTP ${res.status}: ${err.slice(0,200)}`;
+      console.error('Groq error:', msg);
+      throw new Error(msg);
     }
 
     const data = await res.json();
@@ -740,7 +975,7 @@ async function askGroq(messages, attempt=1) {
     // Error de red real — reintentar hasta 3 veces
     if(attempt < 3) {
       setNetBadge('error', `reintentando ${attempt}/3...`);
-      statusText.textContent = `reintentando ${attempt}/3...`;
+      statusText.textContent=getUI('retrying',attempt);
       await new Promise(r => setTimeout(r, attempt * 1500));
       return askGroq(messages, attempt + 1);
     }
@@ -780,11 +1015,24 @@ function localReply(text) {
 // ── HANDLE QUERY ──
 async function handleQuery(text) {
   if(!text.trim()) { startConvo(); return; }
+
+  // ── Cambio de idioma por voz ──
+  if (isLangChangeRequest(text)) {
+    if (handleLangChangeRequest(text)) return;
+  }
+
+  // ── Traducción explícita por voz ──
+  if (needsTranslation(text)) {
+    const lp = getLangProfile();
+    const targetLang = lp.preferido || 'es-MX';
+    // Agregar contexto al query para que la IA traduzca
+    text = text + ` (El usuario quiere que traduzcas al ${Object.values(IDIOMAS).find(i=>i.code===targetLang)?.nombre || 'español'})`;
+  }
   clearSilence();
   if(rec){ try{rec.abort();}catch(e){} rec=null; }
   mode='processing';
   setOrbState('thinking');
-  statusText.textContent='procesando...';
+  statusText.textContent=getUI('processing');
   showMsg('', 'IRIS', true);
 
   let reply;
@@ -799,8 +1047,8 @@ async function handleQuery(text) {
   } else {
     // 2. Sin internet → avisar sin intentar Groq
     if(!navigator.onLine) {
-      setNetBadge('offline','sin internet');
-      reply = 'No tengo internet ahora. Puedo ayudarte con la hora, la fecha o contarte sobre mis funciones sin conexión.';
+      setNetBadge('offline',getUI('noInternet'));
+      reply = getUI('noIntMsg');
     } else {
       // 3. Llamar a Groq
       updateSystemPrompt();
@@ -813,14 +1061,15 @@ async function handleQuery(text) {
         reply = await askGroq(payload);
         conversationHistory.push({role:'assistant', content:reply});
         saveMemory();
-        setNetBadge('online'); // limpiar badge si estaba en error
+        setNetBadge('online');
+        learnFromConversation(text, reply); // aprender en segundo plano
       } catch(e) {
-        // Groq falló — retirar el push del usuario
         conversationHistory.pop();
         if(e.message === 'rate_limit') {
-          reply = 'Alcancé el límite de consultas por minuto. Espera unos segundos e intenta de nuevo.';
+          reply = getUI('rateLimitMsg');
         } else {
-          reply = 'No pude conectarme al servidor. Intenta de nuevo en un momento.';
+          // Mostrar el error real para poder diagnosticar
+          reply = `Error: ${e.message}`;
         }
       }
     }
@@ -833,7 +1082,7 @@ async function handleQuery(text) {
   if(isFarewell) {
     speak(cleanReply, ()=>{
       mode='idle'; setOrbState('idle');
-      statusText.textContent='di "IRIS" o toca el mic';
+      statusText.textContent=getUI('wake');
       setTimeout(startWake, 300);
     });
   } else {
@@ -841,12 +1090,900 @@ async function handleQuery(text) {
   }
 }
 
-// ── REC FACTORY ──
+
+
+
+// ── TEXTOS DE INTERFAZ POR IDIOMA ──
+const UI = {
+  'es': {
+    wake:        'di "IRIS" o toca el mic',
+    listening:   'escuchando...',
+    speaking:    'hablando...',
+    processing:  'procesando...',
+    thinking:    'pensando...',
+    retrying:    (n) => `reintentando ${n}/3...`,
+    rateLimit:   'límite alcanzado, esperando...',
+    noInternet:  'sin internet',
+    micDenied:   'permiso de micrófono denegado',
+    more:        '¿algo más?',
+    init:        'iniciando...',
+    hintMain:    'DI "IRIS" EN CUALQUIER MOMENTO, O TOCA EL MIC',
+    hintSub:     'IRIS — ASISTENTE VISUAL INTELIGENTE',
+    chips:       ['Iris, ¿qué puedes hacer?','Iris, ¿cómo lees textos?','Iris, ¿funciones sin internet?','Iris, ¿cómo traduces audio?'],
+    youLabel:    'TÚ',
+    noIntMsg:    'No tengo internet ahora. Puedo ayudarte con la hora, la fecha o contarte sobre mis funciones sin conexión.',
+    rateLimitMsg:'Alcancé el límite de consultas. Espera unos segundos e intenta de nuevo.',
+  },
+  'en': {
+    wake:        'say "IRIS" or tap the mic',
+    listening:   'listening...',
+    speaking:    'speaking...',
+    processing:  'processing...',
+    thinking:    'thinking...',
+    retrying:    (n) => `retrying ${n}/3...`,
+    rateLimit:   'rate limit reached, waiting...',
+    noInternet:  'no internet',
+    micDenied:   'microphone permission denied',
+    more:        'anything else?',
+    init:        'starting...',
+    hintMain:    'SAY "IRIS" ANYTIME, OR TAP THE MIC',
+    hintSub:     'IRIS — INTELLIGENT VISUAL ASSISTANT',
+    chips:       ['Iris, what can you do?','Iris, how do you read text?','Iris, offline features?','Iris, how do you translate?'],
+    youLabel:    'YOU',
+    noIntMsg:    'I have no internet right now. I can help you with the time, date or tell you about my features offline.',
+    rateLimitMsg:'I reached the query limit. Wait a few seconds and try again.',
+  },
+  'fr': {
+    wake:        'dis "IRIS" ou appuie sur le micro',
+    listening:   'écoute...',
+    speaking:    'je parle...',
+    processing:  'traitement...',
+    thinking:    'réflexion...',
+    retrying:    (n) => `nouvelle tentative ${n}/3...`,
+    rateLimit:   'limite atteinte, patiente...',
+    noInternet:  'pas de connexion',
+    micDenied:   'permission micro refusée',
+    more:        'autre chose?',
+    init:        'démarrage...',
+    hintMain:    'DIS "IRIS" À TOUT MOMENT, OU APPUIE SUR LE MICRO',
+    hintSub:     'IRIS — ASSISTANT VISUEL INTELLIGENT',
+    chips:       ['Iris, que peux-tu faire?','Iris, comment lis-tu?','Iris, fonctions hors ligne?','Iris, comment traduis-tu?'],
+    youLabel:    'TOI',
+    noIntMsg:    "Je n'ai pas internet. Je peux t'aider avec l'heure, la date ou mes fonctions hors ligne.",
+    rateLimitMsg:"J'ai atteint la limite de requêtes. Attends quelques secondes.",
+  },
+  'pt': {
+    wake:        'diga "IRIS" ou toque no mic',
+    listening:   'ouvindo...',
+    speaking:    'falando...',
+    processing:  'processando...',
+    thinking:    'pensando...',
+    retrying:    (n) => `tentativa ${n}/3...`,
+    rateLimit:   'limite atingido, aguardando...',
+    noInternet:  'sem internet',
+    micDenied:   'permissão de microfone negada',
+    more:        'mais alguma coisa?',
+    init:        'iniciando...',
+    hintMain:    'DIGA "IRIS" A QUALQUER MOMENTO, OU TOQUE NO MIC',
+    hintSub:     'IRIS — ASSISTENTE VISUAL INTELIGENTE',
+    chips:       ['Iris, o que você faz?','Iris, como lê textos?','Iris, funções offline?','Iris, como traduz?'],
+    youLabel:    'VOCÊ',
+    noIntMsg:    'Não tenho internet agora. Posso ajudar com hora, data ou funções offline.',
+    rateLimitMsg:'Atingi o limite de consultas. Aguarde alguns segundos.',
+  },
+  'de': {
+    wake:        'sag "IRIS" oder tippe das Mikro',
+    listening:   'höre zu...',
+    speaking:    'spreche...',
+    processing:  'verarbeite...',
+    thinking:    'denke nach...',
+    retrying:    (n) => `Versuch ${n}/3...`,
+    rateLimit:   'Limit erreicht, warte...',
+    noInternet:  'kein Internet',
+    micDenied:   'Mikrofonberechtigung verweigert',
+    more:        'noch etwas?',
+    init:        'starte...',
+    hintMain:    'SAG "IRIS" JEDERZEIT ODER TIPPE DAS MIKRO',
+    hintSub:     'IRIS — INTELLIGENTER VISUELLER ASSISTENT',
+    chips:       ['Iris, was kannst du?','Iris, wie liest du?','Iris, Offline-Funktionen?','Iris, wie übersetzt du?'],
+    youLabel:    'DU',
+    noIntMsg:    'Ich habe kein Internet. Ich kann mit Uhrzeit, Datum oder Offline-Funktionen helfen.',
+    rateLimitMsg:'Ich habe das Anfragelimit erreicht. Warte ein paar Sekunden.',
+  },
+};
+
+function getUI(key, ...args) {
+  const lang = (getLangProfile().preferido || 'es-MX').split('-')[0];
+  const dict = UI[lang] || UI['es'];
+  const val = dict[key] || UI['es'][key];
+  return typeof val === 'function' ? val(...args) : (val || '');
+}
+
+function applyUILang() {
+  // Textos estáticos de la interfaz
+  const hintEl = document.getElementById('hint');
+  if (hintEl) hintEl.innerHTML = `${getUI('hintMain')}<br><span style="font-size:9px;opacity:0.6">${getUI('hintSub')}</span>`;
+  // Chips de sugerencias
+  const chips = document.querySelectorAll('.sug-chip');
+  const chipTexts = getUI('chips');
+  chips.forEach((c, i) => { if (chipTexts[i]) c.textContent = chipTexts[i]; });
+}
+
+// ══════════════════════════════════════════
+// ── IDIOMAS SOPORTADOS ──
+// ══════════════════════════════════════════
+const IDIOMAS = {
+  'es':    { code:'es-MX', nombre:'español',  flag:'🇲🇽' },
+  'en':    { code:'en-US', nombre:'inglés',   flag:'🇺🇸' },
+  'fr':    { code:'fr-FR', nombre:'francés',  flag:'🇫🇷' },
+  'pt':    { code:'pt-BR', nombre:'portugués',flag:'🇧🇷' },
+  'de':    { code:'de-DE', nombre:'alemán',   flag:'🇩🇪' },
+  'it':    { code:'it-IT', nombre:'italiano', flag:'🇮🇹' },
+  'zh':    { code:'zh-CN', nombre:'chino',    flag:'🇨🇳' },
+  'ja':    { code:'ja-JP', nombre:'japonés',  flag:'🇯🇵' },
+  'ko':    { code:'ko-KR', nombre:'coreano',  flag:'🇰🇷' },
+  'ar':    { code:'ar-SA', nombre:'árabe',    flag:'🇸🇦' },
+};
+
+// Detectar idioma principal del dispositivo
+function detectDeviceLang() {
+  const raw = navigator.language || navigator.userLanguage || 'es';
+  const prefix = raw.split('-')[0].toLowerCase();
+  return IDIOMAS[prefix] || IDIOMAS['es'];
+}
+
+// ── PERFIL DE IDIOMAS ──
+// userProfile.idiomas = { preferido: 'es-MX', entiende: ['es-MX','en-US'], noEspontaneo: ['fr-FR'] }
+// "entiende" = >90% comprensión → IRIS habla directo
+// "noEspontaneo" = conoce algo pero IRIS traduce si piden
+
+function getLangProfile() {
+  return userProfile.idiomas || { preferido:'es-MX', entiende:['es-MX'], noEspontaneo:[] };
+}
+
+function saveLangProfile(lp) {
+  userProfile.idiomas = lp;
+  saveProfile(userProfile);
+  // Actualizar lengua del reconocimiento de voz
+  currentRecLang = lp.preferido;
+}
+
+let currentRecLang = 'es-MX'; // idioma activo del mic
+
+// ── TRADUCCIÓN EN TIEMPO REAL (trigger por voz) ──
+// Si el texto contiene "traduce", "en español", "qué dice", etc.
+function needsTranslation(text) {
+  const t = text.toLowerCase();
+  return /\b(traduce|tradúceme|qué dice|qué significa|en español|en inglés|en mi idioma)\b/.test(t);
+}
+
+// ══════════════════════════════════════════
+// ── ONBOARDING 100% POR VOZ ──
+// ══════════════════════════════════════════
+const OB_KEY      = 'iris_onboarding_done';
+const OB_LANG_KEY = 'iris_lang';
+let obData = { nombre:'', lang:'es-MX', termsAccepted:false, timestamp:null };
+
+// UI helpers para onboarding
+function obSetUI(icon, question, hint, showTerms=false) {
+  document.getElementById('obIcon').textContent = icon;
+  document.getElementById('obQuestion').textContent = question;
+  document.getElementById('obHint').textContent = hint;
+  document.getElementById('obTermsBox').style.display = showTerms ? 'block' : 'none';
+}
+
+// Hablar durante el onboarding (sin modo wake, sin historial)
+function obSpeak(text, lang, onEnd) {
+  tts.cancel();
+  const utt = new SpeechSynthesisUtterance(text);
+  utt.lang = lang || 'es-MX';
+  utt.rate = 0.88; utt.pitch = 1.05; utt.volume = 1;
+  const voices = tts.getVoices();
+  const v = voices.find(v => v.lang.startsWith(lang?.split('-')[0] || 'es'))
+          || voices.find(v => v.lang.startsWith('es'));
+  if (v) utt.voice = v;
+  utt.onend = onEnd || null;
+  utt.onerror = onEnd || null;
+  tts.speak(utt);
+}
+
+// Escuchar una respuesta del usuario durante onboarding
+function obListen(lang, onResult, onEmpty) {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { if(onEmpty) onEmpty(); return; }
+  const r = new SR();
+  r.lang = lang || 'es-MX';
+  r.continuous = false;
+  r.interimResults = false;
+  r.maxAlternatives = 3;
+
+  // Indicar que está escuchando
+  document.getElementById('obHint').textContent = '🎙 ESCUCHANDO...';
+
+  let heard = '';
+  let timer = setTimeout(() => {
+    try { r.stop(); } catch(e) {}
+    if (!heard && onEmpty) onEmpty();
+  }, 9000);
+
+  r.onresult = e => {
+    clearTimeout(timer);
+    // Recoger todas las alternativas para mayor precisión
+    const alts = Array.from(e.results[0]).map(a => a.transcript.trim());
+    heard = alts[0] || '';
+    if (onResult) onResult(heard, alts);
+  };
+
+  r.onend = () => {
+    clearTimeout(timer);
+    if (!heard && onEmpty) onEmpty();
+  };
+
+  r.onerror = () => {
+    clearTimeout(timer);
+    if (onEmpty) onEmpty();
+  };
+
+  try { r.start(); } catch(e) { if(onEmpty) onEmpty(); }
+}
+
+// ── FLUJO DE ONBOARDING POR VOZ ──
+// Paso 1: Detectar idioma del dispositivo → hablarle en ese idioma
+// Paso 2: Preguntar nombre
+// Paso 3: Confirmar idioma / preguntar si entiende otros
+// Paso 4: Leer términos y pedir aceptación
+// Paso 5: Finalizar
+
+function obStart() {
+  const deviceLang = detectDeviceLang();
+  obData.lang = deviceLang.code;
+  currentRecLang = deviceLang.code;
+
+  const msgs = {
+    'es': `Hola, soy IRIS, tu asistente visual inteligente. Voy a hacerte unas preguntas rápidas para configurarme. ¿Cómo te llamas?`,
+    'en': `Hello, I'm IRIS, your visual assistant. I'll ask you a few quick questions to set up. What's your name?`,
+    'fr': `Bonjour, je suis IRIS, ton assistante visuelle. Je vais te poser quelques questions. Comment tu t'appelles?`,
+    'pt': `Olá, sou IRIS, sua assistente visual. Vou fazer algumas perguntas rápidas. Como você se chama?`,
+    'de': `Hallo, ich bin IRIS, deine visuelle Assistentin. Ich stelle dir ein paar Fragen. Wie heißt du?`,
+  };
+
+  const msg = msgs[deviceLang.code.split('-')[0]] || msgs['es'];
+
+  obSetUI('👋', 'Detectando idioma...', 'UN MOMENTO...');
+
+  setTimeout(() => {
+    obSetUI('👋', '¿Cómo te llamas?', 'DI TU NOMBRE EN VOZ ALTA');
+    obSpeak(msg, deviceLang.code, () => obStepNombre(deviceLang));
+  }, 600);
+}
+
+function obStepNombre(deviceLang) {
+  obSetUI('👤', '¿Cómo te llamas?', '🎙 HABLA AHORA');
+  obListen(deviceLang.code, (heard) => {
+    if (!heard || heard.length < 2) {
+      // No entendió — reintentar
+      obSpeak('No pude escuchar tu nombre. ¿Me lo puedes repetir?', deviceLang.code,
+        () => obStepNombre(deviceLang));
+      return;
+    }
+    // Capitalizar primera letra
+    obData.nombre = heard.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+    userProfile.nombre = obData.nombre;
+    obStepIdiomaConfirmar(deviceLang);
+  }, () => obStepNombre(deviceLang));
+}
+
+function obStepIdiomaConfirmar(deviceLang) {
+  const nombre = obData.nombre;
+  const msgs = {
+    'es': `Mucho gusto, ${nombre}. Detecté que tu dispositivo está en ${deviceLang.nombre}. ¿Es este tu idioma preferido? Di sí o no.`,
+    'en': `Nice to meet you, ${nombre}. I detected your device is in ${deviceLang.nombre}. Is this your preferred language? Say yes or no.`,
+  };
+  const msg = msgs[deviceLang.code.split('-')[0]] || msgs['es'];
+  obSetUI('🌐', `¿Tu idioma es ${deviceLang.nombre}?`, 'DI "SÍ" O "NO"');
+  obSpeak(msg, deviceLang.code, () => {
+    obListen(deviceLang.code, (heard) => {
+      const h = heard.toLowerCase();
+      const isYes = /\b(sí|si|yes|oui|ja|sim|sì)\b/.test(h);
+      if (isYes) {
+        obData.lang = deviceLang.code;
+        obStepIdiomasAdicionales(deviceLang);
+      } else {
+        obStepPreguntarIdioma();
+      }
+    }, () => {
+      obData.lang = deviceLang.code;
+      obStepIdiomasAdicionales(deviceLang);
+    });
+  });
+}
+
+function obStepPreguntarIdioma() {
+  obSetUI('🌍', '¿En qué idioma prefieres que te hable?', 'DI EL NOMBRE DEL IDIOMA');
+  obSpeak('¿En qué idioma prefieres que me comunique contigo? Puedes decir español, inglés, francés, portugués, alemán, italiano u otro.', 'es-MX', () => {
+    obListen('es-MX', (heard) => {
+      const h = heard.toLowerCase();
+      let detected = IDIOMAS['es']; // default
+      for (const [key, val] of Object.entries(IDIOMAS)) {
+        if (h.includes(val.nombre)) { detected = val; break; }
+      }
+      obData.lang = detected.code;
+      currentRecLang = detected.code;
+      obSpeak(`Perfecto, me comunicaré contigo en ${detected.nombre}.`, detected.code,
+        () => obStepIdiomasAdicionales(detected));
+    }, () => obStepTerminos());
+  });
+}
+
+function obStepIdiomasAdicionales(langObj) {
+  const code = langObj.code || obData.lang;
+  const prefix = code.split('-')[0];
+  const msgs = {
+    'es': `¿Entiendes algún otro idioma con fluidez, más del noventa por ciento? Por ejemplo inglés, francés, portugués. Di el nombre o di "no".`,
+    'en': `Do you understand any other language fluently, more than ninety percent? For example Spanish, French. Say the name or say "no".`,
+  };
+  const msg = msgs[prefix] || msgs['es'];
+  obSetUI('🗣', '¿Entiendes otro idioma?', 'DI EL IDIOMA O "NO"');
+
+  const lp = getLangProfile();
+  lp.preferido = obData.lang;
+  if (!lp.entiende.includes(obData.lang)) lp.entiende.push(obData.lang);
+
+  obSpeak(msg, obData.lang, () => {
+    obListen(obData.lang, (heard) => {
+      const h = heard.toLowerCase();
+      if (/\b(no|nop|nope|ninguno|ningún)\b/.test(h)) {
+        saveLangProfile(lp);
+        obStepTerminos();
+        return;
+      }
+      // Buscar idioma mencionado
+      let added = false;
+      for (const [key, val] of Object.entries(IDIOMAS)) {
+        if (h.includes(val.nombre) || h.includes(key)) {
+          if (!lp.entiende.includes(val.code)) {
+            lp.entiende.push(val.code);
+            added = true;
+          }
+        }
+      }
+      saveLangProfile(lp);
+      if (added) {
+        const confirmMsgs = {
+          'es': `Guardado. ¿Entiendes algún otro idioma más? Di el nombre o di "no".`,
+          'en': `Saved. Do you understand any other language? Say the name or say "no".`,
+        };
+        const confirmMsg = confirmMsgs[obData.lang.split('-')[0]] || confirmMsgs['es'];
+        obSpeak(confirmMsg, obData.lang, () => {
+          obListen(obData.lang, (h2) => {
+            if (/\b(no|nop|nope|ninguno)\b/.test(h2.toLowerCase())) {
+              obStepTerminos();
+            } else {
+              // Buscar otro idioma más
+              for (const [key, val] of Object.entries(IDIOMAS)) {
+                if (h2.toLowerCase().includes(val.nombre)) {
+                  if (!lp.entiende.includes(val.code)) lp.entiende.push(val.code);
+                }
+              }
+              saveLangProfile(lp);
+              obStepTerminos();
+            }
+          }, obStepTerminos);
+        });
+      } else {
+        obStepTerminos();
+      }
+    }, () => { saveLangProfile(lp); obStepTerminos(); });
+  });
+}
+
+const TERMINOS_TEXT = `Términos y condiciones de uso de IRIS. Primero: IRIS es una herramienta de accesibilidad, no un dispositivo médico. No sustituye diagnósticos ni tratamientos profesionales. Segundo: úsala solo para fines lícitos y de asistencia personal. Tercero: IRIS puede cometer errores en la lectura de textos. La información sobre medicamentos debe verificarse con un profesional. Cuarto: tus datos de perfil se guardan localmente en tu dispositivo y no se comparten sin tu consentimiento. Quinto: el servicio es un prototipo educativo sin garantía de disponibilidad continua. Sexto: el equipo desarrollador no se responsabiliza por decisiones basadas en la información de IRIS. Séptimo: menores de edad requieren autorización de su tutor. Al aceptar, confirmas haber entendido estos términos.`;
+
+function obStepTerminos() {
+  document.getElementById('obTermsBox').textContent = TERMINOS_TEXT;
+  const prefix = obData.lang.split('-')[0];
+  const msgs = {
+    'es': `Tengo unos términos y condiciones. ¿Los acepto directamente, o prefieres que te los lea primero? Di "acepto" para continuar, o "léelos" para escucharlos.`,
+    'en': `I have some terms and conditions. Do you accept directly, or would you like me to read them first? Say "accept" to continue, or "read them" to listen.`,
+  };
+  const msg = msgs[prefix] || msgs['es'];
+  obSetUI('📋', 'Términos y condiciones', 'DI "ACEPTO" O "LÉELOS"', true);
+  obSpeak(msg, obData.lang, () => {
+    obListen(obData.lang, (heard) => {
+      const h = heard.toLowerCase();
+      const wantsRead = /\b(l[eé]elos|l[eé]elas|l[eé]e|read|lire|lesen|ler)\b/.test(h);
+      const acceptsDirect = /\b(acepto|accept|sí|si|yes|i accept|oui|ja|sim|directo|directamente)\b/.test(h);
+
+      if (wantsRead) {
+        // Quiere escucharlos → leer y luego pedir aceptación
+        const readMsg = { 'es': 'Bien, escucha con atención.', 'en': 'Alright, listen carefully.' };
+        obSpeak(readMsg[prefix] || readMsg['es'], obData.lang, () => {
+          obSpeak(TERMINOS_TEXT, obData.lang, () => obStepPedirAceptacion());
+        });
+      } else if (acceptsDirect) {
+        // Acepta directo → no leer
+        obData.termsAccepted = true;
+        obData.timestamp = new Date().toISOString();
+        obFinish();
+      } else {
+        // No entendió → preguntar de nuevo
+        const retryMsg = { 'es': 'No entendí. Di "acepto" para continuar, o "léelos" para escuchar los términos.', 'en': 'I did not understand. Say "accept" to continue, or "read them" to listen.' };
+        obSpeak(retryMsg[prefix] || retryMsg['es'], obData.lang, () => obStepTerminos());
+      }
+    }, () => {
+      // No escuchó nada → preguntar de nuevo
+      obStepTerminos();
+    });
+  });
+}
+
+function obStepPedirAceptacion() {
+  const prefix = obData.lang.split('-')[0];
+  const msgs = {
+    'es': `¿Aceptas los términos y condiciones? Di "acepto" para continuar.`,
+    'en': `Do you accept the terms and conditions? Say "I accept" to continue.`,
+  };
+  const msg = msgs[prefix] || msgs['es'];
+  obSetUI('✅', '¿Aceptas los términos?', 'DI "ACEPTO"');
+  obSpeak(msg, obData.lang, () => {
+    obListen(obData.lang, (heard) => {
+      const h = heard.toLowerCase();
+      const accepted = /\b(acepto|sí acepto|accept|yes|i accept|oui|ja|sim)\b/.test(h);
+      if (accepted) {
+        obData.termsAccepted = true;
+        obData.timestamp = new Date().toISOString();
+        obFinish();
+      } else {
+        // No aceptó — informar que se necesita consentimiento y preguntar de nuevo
+        const insistMsgs = {
+          'es': `Necesito tu consentimiento para continuar. ¿Aceptas los términos? Di "acepto".`,
+          'en': `I need your consent to continue. Do you accept the terms? Say "I accept".`,
+        };
+        const insistMsg = insistMsgs[prefix] || insistMsgs['es'];
+        obSpeak(insistMsg, obData.lang, () => obStepPedirAceptacion());
+      }
+    }, () => obStepPedirAceptacion());
+  });
+}
+
+function obFinish() {
+  const nombre = obData.nombre || 'Usuario';
+  saveProfile(userProfile);
+  localStorage.setItem(OB_KEY, 'done');
+  localStorage.setItem(OB_LANG_KEY, obData.lang);
+  saveContract(nombre, obData.timestamp || new Date().toISOString());
+
+  const msgs = {
+    'es': `¡Perfecto, ${nombre}! Ya estoy lista para ayudarte. Di mi nombre en cualquier momento para activarme.`,
+    'en': `Perfect, ${nombre}! I'm ready to help you. Say my name at any time to activate me.`,
+  };
+  const msg = msgs[obData.lang.split('-')[0]] || msgs['es'];
+  obSetUI('🎉', `¡Listo, ${nombre}!`, 'IRIS ESTÁ LISTA');
+
+  obSpeak(msg, obData.lang, () => {
+    const ob = document.getElementById('onboarding');
+    ob.classList.add('hidden');
+    setTimeout(() => { ob.style.display = 'none'; }, 700);
+    // Guardar idioma en el perfil antes de construir el prompt
+    const lp = getLangProfile();
+    lp.preferido = obData.lang;
+    if (!lp.entiende.includes(obData.lang)) lp.entiende.push(obData.lang);
+    saveLangProfile(lp);
+    currentRecLang = obData.lang;
+    conversationHistory[0].content = buildSystemPrompt();
+    requestLocation();
+    bienvenidaDone = true;
+    suggestions.classList.add('visible');
+    hint.style.opacity = '0.4';
+    applyUILang(); // UI en el idioma del usuario
+    setTimeout(startWake, 300);
+  });
+}
+
+// ── CAMBIO DE IDIOMA EN CUALQUIER MOMENTO POR VOZ ──
+// ── FRASE DE SEGURIDAD PARA CAMBIO DE IDIOMA ──
+// Se guarda durante el onboarding o la primera vez que el usuario configura uno
+function getLangPassphrase() {
+  return localStorage.getItem('iris_lang_pass') || null;
+}
+function setLangPassphrase(phrase) {
+  localStorage.setItem('iris_lang_pass', phrase.toLowerCase().trim());
+}
+
+let _pendingLangChange = null; // { val, key } esperando confirmación
+
+function handleLangChangeRequest(text) {
+  const h = text.toLowerCase();
+  for (const [key, val] of Object.entries(IDIOMAS)) {
+    if (h.includes(val.nombre) || h.includes(key)) {
+      _pendingLangChange = { val, key };
+      const passphrase = getLangPassphrase();
+
+      if (!passphrase) {
+        // Nunca configuró frase — pedirla ahora y guardarla
+        const msg = `Para cambiar el idioma necesito configurar una frase de seguridad. Di la frase que quieres usar para autorizar cambios de idioma.`;
+        showMsg(msg, 'IRIS');
+        speak(msg, () => {
+          mode = 'direct';
+          const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+          if (!SR) return;
+          const r = new SR();
+          r.lang = currentRecLang; r.continuous = false; r.interimResults = false;
+          r.onresult = (e) => {
+            const phrase = e.results[0][0].transcript.trim();
+            if (phrase.length < 3) { speak('La frase es muy corta. Inténtalo de nuevo.', () => startWake()); return; }
+            setLangPassphrase(phrase);
+            applyLangChange(_pendingLangChange.val, _pendingLangChange.key);
+          };
+          r.onend = () => { if (mode === 'direct') { mode = 'idle'; startWake(); } };
+          r.onerror = () => { mode = 'idle'; startWake(); };
+          try { r.start(); } catch(e) { mode = 'idle'; startWake(); }
+        });
+      } else {
+        // Ya tiene frase — pedirla para verificar
+        const msg = `Di tu frase de seguridad para cambiar el idioma.`;
+        showMsg(msg, 'IRIS');
+        speak(msg, () => {
+          mode = 'direct';
+          const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+          if (!SR) return;
+          const r = new SR();
+          r.lang = currentRecLang; r.continuous = false; r.interimResults = false;
+          r.onresult = (e) => {
+            const heard = e.results[0][0].transcript.toLowerCase().trim();
+            // Comparación flexible: al menos 80% de palabras coinciden
+            const saved = passphrase.split(' ');
+            const heardW = heard.split(' ');
+            const matches = saved.filter(w => heardW.some(h => h.includes(w) || w.includes(h))).length;
+            const ratio = matches / saved.length;
+            if (ratio >= 0.7) {
+              applyLangChange(_pendingLangChange.val, _pendingLangChange.key);
+            } else {
+              const deny = 'Frase incorrecta. No pude cambiar el idioma.';
+              showMsg(deny, 'IRIS');
+              speak(deny, () => { mode = 'idle'; startWake(); });
+            }
+          };
+          r.onend = () => { if (mode === 'direct') { mode = 'idle'; startWake(); } };
+          r.onerror = () => { mode = 'idle'; startWake(); };
+          try { r.start(); } catch(e) { mode = 'idle'; startWake(); }
+        });
+      }
+      return true;
+    }
+  }
+  return false;
+}
+
+function applyLangChange(val, key) {
+  const lp = getLangProfile();
+  lp.preferido = val.code;
+  if (!lp.entiende.includes(val.code)) lp.entiende.push(val.code);
+  saveLangProfile(lp);
+  currentRecLang = val.code;
+  updateSystemPrompt(); // Actualizar prompt con nuevo idioma
+  applyUILang(); // Actualizar textos de interfaz
+  const confirmMsgs = {
+    'es': `Listo, ahora hablo en español.`,
+    'en': `Done, now I speak in English.`,
+    'fr': `Parfait, je parle maintenant en français.`,
+    'pt': `Pronto, agora falo em português.`,
+    'de': `Fertig, jetzt spreche ich Deutsch.`,
+    'it': `Fatto, ora parlo in italiano.`,
+    'zh': `好的，我现在用中文说话。`,
+    'ja': `了解です。日本語で話します。`,
+    'ko': `알겠습니다. 이제 한국어로 말합니다.`,
+    'ar': `حسناً، سأتحدث الآن باللغة العربية.`,
+  };
+  const reply = confirmMsgs[key] || `Cambié a ${val.nombre}.`;
+  showMsg(reply, 'IRIS');
+  speak(reply, () => { mode = 'idle'; startWake(); });
+}
+
+function isLangChangeRequest(text) {
+  const h = text.toLowerCase();
+  return /\b(cambia(r|me)?|habla(me)?|en|switch|change|speak|parle|sprich|parla|habla)\b/.test(h)
+    && Object.values(IDIOMAS).some(v => h.includes(v.nombre));
+}
+
+function saveContract(nombre, timestamp) {
+  const fecha = new Date(timestamp).toLocaleString('es-MX', {
+    year:'numeric', month:'long', day:'numeric', hour:'2-digit', minute:'2-digit'
+  });
+  const contrato = {
+    usuario: nombre, fecha, timestamp, aceptado: true,
+    version_terminos: '1.0', sistema: 'IRIS — Asistente Visual Inteligente',
+    idioma_preferido: obData.lang
+  };
+  try { localStorage.setItem('iris_contract_' + nombre.replace(/\s+/g,'_'), JSON.stringify(contrato)); } catch(e) {}
+}
+
+function initOnboarding() {
+  const done = localStorage.getItem(OB_KEY);
+  if (done) {
+    const ob = document.getElementById('onboarding');
+    ob.style.display = 'none';
+    const savedLang = localStorage.getItem(OB_LANG_KEY);
+    if (savedLang) {
+      currentRecLang = savedLang;
+      const lp = getLangProfile();
+      lp.preferido = savedLang;
+      if (!lp.entiende.includes(savedLang)) lp.entiende.push(savedLang);
+      saveLangProfile(lp);
+    }
+    conversationHistory[0].content = buildSystemPrompt();
+    requestLocation();
+    applyUILang(); // UI según idioma guardado
+    const go = () => setTimeout(bienvenida, 800);
+    if (tts.getVoices().length > 0) go();
+    else { tts.addEventListener('voiceschanged', go); setTimeout(go, 1200); }
+  } else {
+    // Primera vez — esperar voces y arrancar onboarding por voz
+    if (tts.getVoices().length > 0) setTimeout(obStart, 800);
+    else { tts.addEventListener('voiceschanged', () => setTimeout(obStart, 800)); setTimeout(() => setTimeout(obStart, 800), 1200); }
+  }
+}
+
+
+
+// ══════════════════════════════════════════
+// ── ADMIN — long press 3s en logo ──
+// ══════════════════════════════════════════
+const ADMIN_PASS = '123';
+let pressTimer = null;
+let pressStart = 0;
+const pressRing = document.getElementById('pressRing');
+
+function admStartPress() {
+  pressStart = Date.now();
+  pressRing.classList.add('pressing');
+  pressTimer = setTimeout(() => {
+    pressRing.classList.remove('pressing');
+    openAdminModal();
+  }, 3000);
+}
+
+function admCancelPress() {
+  clearTimeout(pressTimer);
+  pressTimer = null;
+  pressRing.classList.remove('pressing');
+}
+
+orb.addEventListener('mousedown',  admStartPress);
+orb.addEventListener('touchstart', admStartPress, { passive: true });
+orb.addEventListener('mouseup',    admCancelPress);
+orb.addEventListener('mouseleave', admCancelPress);
+orb.addEventListener('touchend',   admCancelPress);
+orb.addEventListener('touchcancel',admCancelPress);
+
+function openAdminModal() {
+  if (bienvenidaDone) { tts.cancel(); if(rec){ try{rec.abort();}catch(e){} rec=null; } mode='idle'; }
+  document.getElementById('admPass').value = '';
+  document.getElementById('adminModal').classList.add('open');
+  setTimeout(() => document.getElementById('admPass').focus(), 200);
+}
+
+function admClose() {
+  document.getElementById('adminModal').classList.remove('open');
+  document.getElementById('admPass').value = '';
+  if (bienvenidaDone) setTimeout(startWake, 300);
+}
+
+function admVerify() {
+  const val = document.getElementById('admPass').value.trim();
+  if (val === ADMIN_PASS) {
+    admClose();
+    setTimeout(showAdminPanel, 300);
+  } else {
+    document.getElementById('admPass').style.borderColor = 'rgba(255,80,80,0.6)';
+    setTimeout(() => document.getElementById('admPass').style.borderColor = '', 1200);
+  }
+}
+
+function showAdminPanel() {
+  // Siempre rebuilding para mostrar datos actuales
+  const existing = document.getElementById('adminPanel');
+  if (existing) existing.remove();
+
+  const lp = getLangProfile();
+  const activeLangCode = lp.preferido || 'es-MX';
+  const activeLangName = Object.values(IDIOMAS).find(i=>i.code===activeLangCode)?.nombre || 'español';
+  const passphrase = getLangPassphrase() || '(no configurada)';
+
+  const panel = document.createElement('div');
+  panel.id = 'adminPanel';
+  panel.style.cssText = 'position:fixed;inset:0;z-index:300;background:rgba(5,6,10,0.97);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:32px;overflow-y:auto;';
+
+  // Selector de idiomas
+  const langOptions = Object.entries(IDIOMAS).map(([k,v]) =>
+    `<option value="${v.code}" ${v.code===activeLangCode?'selected':''}>${v.flag} ${v.nombre}</option>`
+  ).join('');
+
+  panel.innerHTML = `
+    <div class="adm-title">PANEL ADMIN</div>
+
+    <div style="width:100%;max-width:320px;background:rgba(0,229,255,0.04);border:1px solid rgba(0,229,255,0.12);border-radius:12px;padding:16px 18px;">
+      <div style="font-size:9px;letter-spacing:3px;color:rgba(0,229,255,0.5);margin-bottom:10px;">🌐 IDIOMA ACTIVO</div>
+      <select id="admLangSelect" style="width:100%;background:rgba(0,229,255,0.06);border:1px solid rgba(0,229,255,0.2);border-radius:8px;padding:10px 12px;color:#f0f4f8;font-family:'Syne',sans-serif;font-size:13px;outline:none;cursor:pointer;">
+        ${langOptions}
+      </select>
+      <button class="adm-btn" onclick="admChangeLang()" style="width:100%;margin-top:10px;font-size:11px;">APLICAR IDIOMA</button>
+    </div>
+
+    <div style="width:100%;max-width:320px;background:rgba(0,229,255,0.04);border:1px solid rgba(0,229,255,0.12);border-radius:12px;padding:16px 18px;">
+      <div style="font-size:9px;letter-spacing:3px;color:rgba(0,229,255,0.5);margin-bottom:6px;">🔐 FRASE DE SEGURIDAD</div>
+      <div style="font-size:11px;color:rgba(240,244,248,0.4);margin-bottom:10px;letter-spacing:1px;">${passphrase}</div>
+      <input id="admPassphrase" type="text" placeholder="Nueva frase de seguridad..." style="width:100%;background:rgba(0,229,255,0.05);border:1px solid rgba(0,229,255,0.2);border-radius:8px;padding:10px 12px;color:#f0f4f8;font-family:'Syne',sans-serif;font-size:13px;outline:none;margin-bottom:8px;" />
+      <div style="display:flex;gap:8px;">
+        <button class="adm-btn" onclick="admSavePassphrase()" style="flex:1;font-size:11px;">GUARDAR</button>
+        <button class="adm-btn" onclick="admRecordPassphrase()" style="flex:1;font-size:11px;">🎙 GRABAR VOZ</button>
+      </div>
+    </div>
+
+    <button class="adm-btn" onclick="downloadContracts()" style="width:100%;max-width:320px;">📄 Descargar contratos</button>
+    <button class="adm-btn" onclick="admResetDevice()" style="width:100%;max-width:320px;border-color:rgba(255,120,60,0.5);color:rgba(255,140,80,0.9);">🔄 Resetear dispositivo</button>
+    <button class="adm-btn" onclick="closeAdminPanel()" style="margin-top:4px;opacity:0.5;">✕ Cerrar</button>
+  `;
+  document.body.appendChild(panel);
+}
+
+function admChangeLang() {
+  const sel = document.getElementById('admLangSelect');
+  if (!sel) return;
+  const code = sel.value;
+  const entry = Object.entries(IDIOMAS).find(([k,v]) => v.code === code);
+  if (!entry) return;
+  const [key, val] = entry;
+  const lp = getLangProfile();
+  lp.preferido = code;
+  if (!lp.entiende.includes(code)) lp.entiende.push(code);
+  saveLangProfile(lp);
+  currentRecLang = code;
+  updateSystemPrompt();
+  applyUILang();
+  alert(`Idioma cambiado a: ${val.nombre} ${val.flag}`);
+  showAdminPanel(); // refrescar panel
+}
+
+function admSavePassphrase() {
+  const input = document.getElementById('admPassphrase');
+  if (!input) return;
+  const phrase = input.value.trim();
+  if (phrase.length < 3) { alert('La frase es muy corta.'); return; }
+  setLangPassphrase(phrase);
+  alert('Frase de seguridad guardada.');
+  input.value = '';
+  showAdminPanel(); // refrescar para mostrar la nueva frase
+}
+
+function admRecordPassphrase() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { alert('Tu navegador no soporta reconocimiento de voz.'); return; }
+  const r = new SR();
+  r.lang = currentRecLang; r.continuous = false; r.interimResults = false;
+  const btn = document.querySelector('[onclick="admRecordPassphrase()"]');
+  if (btn) btn.textContent = '🔴 ESCUCHANDO...';
+  r.onresult = (e) => {
+    const phrase = e.results[0][0].transcript.trim();
+    if (phrase.length < 3) { alert('No se pudo escuchar. Intenta de nuevo.'); return; }
+    setLangPassphrase(phrase);
+    alert('Frase grabada: "' + phrase + '"');
+    showAdminPanel();
+  };
+  r.onerror = () => { alert('Error al grabar. Intenta de nuevo.'); showAdminPanel(); };
+  r.onend = () => { showAdminPanel(); };
+  try { r.start(); } catch(e) { alert('No se pudo iniciar el micrófono.'); }
+}
+
+function closeAdminPanel() {
+  const p = document.getElementById('adminPanel');
+  if (p) p.style.display = 'none';
+  if (bienvenidaDone) setTimeout(startWake, 300);
+}
+
+function admResetDevice() {
+  if (!confirm('¿Borrar todos los datos de este dispositivo y volver al onboarding inicial?')) return;
+  const keys = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (k && (k.startsWith('iris_') || k.startsWith('IRIS'))) keys.push(k);
+  }
+  keys.forEach(k => localStorage.removeItem(k));
+  location.reload();
+}
+
+// Verificar por voz también
+document.getElementById('admPass').addEventListener('keydown', e => {
+  if (e.key === 'Enter') admVerify();
+});
+
+function downloadContracts() {
+  const contracts = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key && key.startsWith('iris_contract_')) {
+      try { contracts.push(JSON.parse(localStorage.getItem(key))); } catch(e) {}
+    }
+  }
+
+  if (!contracts.length) {
+    alert('No hay contratos registrados aún.');
+    return;
+  }
+
+  let content = '================================================================\n';
+  content += '         IRIS — REGISTRO DE ACEPTACIÓN DE TÉRMINOS\n';
+  content += '         Asistente Visual Inteligente — v1.0\n';
+  content += '================================================================\n\n';
+
+  contracts.forEach((c, i) => {
+    content += `CONTRATO #${i + 1}\n`;
+    content += '----------------------------------------------------------------\n';
+    content += `Usuario:          ${c.usuario}\n`;
+    content += `Fecha y hora:     ${c.fecha}\n`;
+    content += `Sistema:          ${c.sistema}\n`;
+    content += `Versión términos: ${c.version_terminos}\n`;
+    content += `Estado:           ${c.aceptado ? 'ACEPTADO ✓' : 'PENDIENTE'}\n`;
+    content += `Timestamp ISO:    ${c.timestamp}\n`;
+    content += '\n';
+  });
+
+  content += '================================================================\n';
+  content += `Total de registros: ${contracts.length}\n`;
+  content += `Generado: ${new Date().toLocaleString('es-MX')}\n`;
+  content += '================================================================\n';
+
+  const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = `IRIS_contratos_${new Date().toISOString().slice(0,10)}.txt`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// ══════════════════════════════════════════
+// ── SCROLL SINCRONIZADO CON VOZ ──
+// ══════════════════════════════════════════
+let scrollInterval = null;
+
+function startSyncScroll(text, durationMs) {
+  stopSyncScroll();
+  const el = transcript;
+  el.scrollTop = 0;
+  const totalScroll = el.scrollHeight - el.clientHeight;
+  if (totalScroll <= 0) return;
+  const steps = 60;
+  const interval = durationMs / steps;
+  const scrollPerStep = totalScroll / steps;
+  let step = 0;
+  scrollInterval = setInterval(() => {
+    step++;
+    el.scrollTop = Math.min(scrollPerStep * step, totalScroll);
+    if (step >= steps) stopSyncScroll();
+  }, interval);
+}
+
+function stopSyncScroll() {
+  if (scrollInterval) { clearInterval(scrollInterval); scrollInterval = null; }
+}
+
+// Patch de speak para inyectar scroll sincronizado
+const _originalSpeak = speak;
+// Wrapeamos para agregar scroll sin romper la función original
+const _speakWithScroll = speak;
+// Override usando el wrapper existente — inyectamos en utt.onstart
+const __origSpeak = speak;
+
+
 function newRec(continuous) {
   const SR = window.SpeechRecognition||window.webkitSpeechRecognition;
   if(!SR) return null;
   const r = new SR();
-  r.lang='es-MX'; r.interimResults=true; r.maxAlternatives=1;
+  r.lang = currentRecLang || 'es-MX';
+  r.interimResults=true; r.maxAlternatives=1;
   r.continuous=continuous;
   return r;
 }
@@ -859,7 +1996,7 @@ function startConvo() {
   if(!bienvenidaDone || (mode!=='idle' && mode!=='speaking')) return;
   mode='convo';
   setOrbState('listening');
-  statusText.textContent='¿algo más?';
+  statusText.textContent=getUI('more');
   // Solo actualizar el label, no borrar el texto de la respuesta anterior
   transcriptLabel.textContent='IRIS';
   convoDeadline = Date.now() + CONVO_MS; // ventana de 4s total
@@ -875,7 +2012,7 @@ function _convoLoop() {
   if(remaining <= 0) {
     mode='idle';
     setOrbState('idle');
-    statusText.textContent='di "IRIS" o toca el mic';
+    statusText.textContent=getUI('wake');
     setTimeout(startWake, 150);
     return;
   }
@@ -887,14 +2024,15 @@ function _convoLoop() {
   let gotSpeech=false;
 
   r.onresult=(e)=>{
-    let full='';
-    for(let i=0;i<e.results.length;i++) full+=e.results[i][0].transcript;
+    const finalPart=Array.from(e.results).filter(r=>r.isFinal).map(r=>r[0].transcript).join('');
+    const interimPart=Array.from(e.results).filter(r=>!r.isFinal).map(r=>r[0].transcript).join('');
+    let full=(finalPart+interimPart).trim();
     heard=full.trim();
     if(heard.length>1){
       gotSpeech=true;
-      showMsg(heard,'TÚ');
+      showMsg(heard,getUI('youLabel'));
       // Extender deadline mientras sigue hablando
-      setSilence(SILENCE_MS, ()=>{
+      setSilence(getSilenceMs(), ()=>{
         if(mode!=='convo') return;
         try{r.stop();}catch(e){}
       });
@@ -917,7 +2055,7 @@ function _convoLoop() {
   r.onerror=(e)=>{
     clearSilence();
     if(mode!=='convo') return;
-    if(e.error==='not-allowed'){ mode='idle'; statusText.textContent='permiso de micrófono denegado'; return; }
+    if(e.error==='not-allowed'){ mode='idle'; statusText.textContent=getUI('micDenied'); return; }
     setTimeout(_convoLoop, 200);
   };
 
@@ -928,7 +2066,7 @@ function _convoLoop() {
 function startWake() {
   if(!bienvenidaDone || mode!=='idle') return;
   mode='wake';
-  statusText.textContent='di "IRIS" o toca el mic';
+  statusText.textContent=getUI('wake');
   setOrbState('idle');
   clearSilence();
 
@@ -943,8 +2081,9 @@ function startWake() {
   const commit=()=>{ clearSilence(); if(mode!=='wake') return; try{r.stop();}catch(e){}};
 
   r.onresult=(e)=>{
-    let full='';
-    for(let i=0;i<e.results.length;i++) full+=e.results[i][0].transcript;
+    const finalPart=Array.from(e.results).filter(r=>r.isFinal).map(r=>r[0].transcript).join('');
+    const interimPart=Array.from(e.results).filter(r=>!r.isFinal).map(r=>r[0].transcript).join('');
+    let full=(finalPart+interimPart).trim();
     full=full.trim(); heard=full;
     if(!containsIris(full)) return;
     // Solo activar si "iris" aparece al inicio, o si el resultado es final
@@ -955,17 +2094,17 @@ function startWake() {
       irisFound=true;
       playBeep();
       setOrbState('listening');
-      statusText.textContent='escuchando...';
+      statusText.textContent=getUI('listening');
       setSilence(ONLY_NAME_MS, commit);
     }
     // Solo mostrar lo que viene DESPUÉS de "iris", no el ruido previo
     const extra=stripIris(full);
     if(extra.length>2){
       hasQuestion=true;
-      showMsg(extra,'TÚ'); // mostrar solo la pregunta, sin el nombre
-      setSilence(SILENCE_MS, commit);
+      showMsg(extra,getUI('youLabel')); // mostrar solo la pregunta, sin el nombre
+      setSilence(getSilenceMs(), commit);
     } else {
-      showMsg('...','TÚ'); // solo dijo "iris", mostrar placeholder
+      showMsg('...',getUI('youLabel')); // solo dijo "iris", mostrar placeholder
     }
   };
 
@@ -988,7 +2127,7 @@ function startWake() {
     clearSilence();
     if(mode!=='wake') return;
     mode='idle';
-    if(e.error==='not-allowed'){ statusText.textContent='permiso de micrófono denegado'; return; }
+    if(e.error==='not-allowed'){ statusText.textContent=getUI('micDenied'); return; }
     setTimeout(startWake, isMobile?200:600);
   };
 
@@ -1006,12 +2145,13 @@ function startDirect() {
   if(!r){ showMsg('Tu navegador no soporta voz. Usa Chrome.','AVISO'); mode='idle'; startWake(); return; }
   rec=r; let heard='';
 
-  r.onstart=()=>{ playBeep(); setOrbState('listening'); statusText.textContent='escuchando...'; btnMic.classList.add('recording'); btnMic.textContent='⏹'; showMsg('...','TÚ'); };
+  r.onstart=()=>{ playBeep(); setOrbState('listening'); statusText.textContent=getUI('listening'); btnMic.classList.add('recording'); btnMic.textContent='⏹'; showMsg('...',getUI('youLabel')); };
   r.onresult=(e)=>{
-    let full='';
-    for(let i=0;i<e.results.length;i++) full+=e.results[i][0].transcript;
-    heard=full.trim(); showMsg(heard,'TÚ');
-    setSilence(SILENCE_MS,()=>{ if(mode!=='direct') return; clearSilence(); try{r.stop();}catch(e){} });
+    const finalPart=Array.from(e.results).filter(r=>r.isFinal).map(r=>r[0].transcript).join('');
+    const interimPart=Array.from(e.results).filter(r=>!r.isFinal).map(r=>r[0].transcript).join('');
+    let full=(finalPart+interimPart).trim();
+    heard=full.trim(); showMsg(heard,getUI('youLabel'));
+    setSilence(getSilenceMs(),()=>{ if(mode!=='direct') return; clearSilence(); try{r.stop();}catch(e){} });
   };
   const cleanup=()=>{ clearSilence(); btnMic.classList.remove('recording'); btnMic.textContent='🎙️'; };
   r.onend=()=>{
@@ -1040,7 +2180,7 @@ function stopAll(){
   clearTimeout(wakeLoopTimer);
   mode='idle'; setOrbState('idle'); waveViz.classList.remove('active');
   btnMic.classList.remove('recording'); btnMic.textContent='🎙️';
-  statusText.textContent='di "IRIS" o toca el mic';
+  statusText.textContent=getUI('wake');
   setTimeout(startWake, 400);
 }
 function askSuggestion(el){
@@ -1050,13 +2190,21 @@ function askSuggestion(el){
   mode='idle';
   const text=el.textContent;
   const clean=stripIris(text)||text;
-  showMsg(text,'TÚ');
+  showMsg(text,getUI('youLabel'));
   handleQuery(clean);
 }
 
 // ── BIENVENIDA ──
 function bienvenida(){
-  const msg='Hola, soy IRIS, tu asistente visual inteligente. Di mi nombre en cualquier momento para activarme, o toca el micrófono para hablar directo. ¿En qué te puedo ayudar?';
+  const prefix = (getLangProfile().preferido || 'es-MX').split('-')[0];
+  const msgs = {
+    'es': 'Hola, soy IRIS, tu asistente visual inteligente. Di mi nombre en cualquier momento para activarme, o toca el micrófono para hablar directo. ¿En qué te puedo ayudar?',
+    'en': "Hello, I'm IRIS, your intelligent visual assistant. Say my name at any time to activate me, or tap the microphone to speak directly. How can I help you?",
+    'fr': "Bonjour, je suis IRIS, ton assistante visuelle intelligente. Dis mon nom à tout moment pour m'activer, ou appuie sur le micro. Comment puis-je t'aider?",
+    'pt': 'Olá, sou IRIS, sua assistente visual inteligente. Diga meu nome a qualquer momento para me ativar, ou toque no microfone. Como posso ajudar?',
+    'de': 'Hallo, ich bin IRIS, deine intelligente visuelle Assistentin. Sag meinen Namen jederzeit um mich zu aktivieren, oder tippe das Mikrofon. Wie kann ich helfen?',
+  };
+  const msg = msgs[prefix] || msgs['es'];
   showMsg(msg,'IRIS');
   speak(msg, ()=>{
     bienvenidaDone=true;
@@ -1068,15 +2216,11 @@ function bienvenida(){
 
 // ── INIT ──
 window.addEventListener('load', ()=>{
-  statusText.textContent='iniciando...';
+  statusText.textContent=getUI('init');
   setOrbState('idle');
-  // Inicializar system prompt con hora actual (sin ubicación aún)
   conversationHistory[0].content = buildSystemPrompt();
-  // Pedir ubicación en paralelo
   requestLocation();
-  const go=()=>setTimeout(bienvenida, 800);
-  if(tts.getVoices().length>0) go();
-  else { tts.addEventListener('voiceschanged', go); setTimeout(go, 1200); }
+  initOnboarding();
 });
 </script>
 </body>
