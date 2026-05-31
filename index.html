@@ -476,14 +476,15 @@ canvas { position: fixed; inset: 0; pointer-events: none; z-index: 0; }
 <canvas id="particles"></canvas>
 <div id="netBadge" class="online">sin red</div>
 
-<!-- ── ONBOARDING — solo visual mínimo, todo por voz ── -->
+<!-- ── ONBOARDING ── -->
 <div id="onboarding">
   <div class="ob-logo">IRIS</div>
   <div class="ob-sub">ASISTENTE VISUAL INTELIGENTE</div>
   <div class="ob-step active" id="ob1">
     <div class="ob-icon" id="obIcon">👋</div>
     <div class="ob-q" id="obQuestion">Iniciando configuración...</div>
-    <div class="ob-hint" id="obHint">RESPONDE CON TU VOZ</div>
+    <div class="ob-hint" id="obHint">UN MOMENTO...</div>
+    <div id="obButtons" class="ob-options" style="display:none"></div>
     <div class="ob-terms" id="obTermsBox" style="display:none"></div>
   </div>
 </div>
@@ -1258,34 +1259,44 @@ function needsTranslation(text) {
 
 // ══════════════════════════════════════════
 // ── ONBOARDING 100% POR VOZ ──
+// Arquitectura: obSpeaking como candado duro.
+// El mic NUNCA abre mientras obSpeaking === true.
+// Un solo reconocedor activo en todo momento.
 // ══════════════════════════════════════════
+
 const OB_KEY      = 'iris_onboarding_done';
 const OB_LANG_KEY = 'iris_lang';
 let obData = { nombre:'', lang:'es-MX', termsAccepted:false, timestamp:null };
 
-// UI helpers para onboarding
-function obSetUI(icon, question, hint, showTerms=false) {
-  document.getElementById('obIcon').textContent = icon;
-  document.getElementById('obQuestion').textContent = question;
-  document.getElementById('obHint').textContent = hint;
-  document.getElementById('obTermsBox').style.display = showTerms ? 'block' : 'none';
+// ── UI helpers ──
+function obSetUI(icon, question, hint) {
+  document.getElementById('obIcon').textContent      = icon;
+  document.getElementById('obQuestion').textContent  = question;
+  document.getElementById('obHint').textContent      = hint;
+  document.getElementById('obTermsBox').style.display= 'none';
+  const btn = document.getElementById('obButtons');
+  if (btn) btn.style.display = 'none';
 }
 
-// ── ONBOARDING: estado global para evitar que el mic abra mientras IRIS habla ──
-let obSpeaking = false; // true mientras el TTS de onboarding está activo
+// ── TTS con candado: obSpeaking=true mientras habla ──
+let obSpeaking = false;
+let _obRec     = null; // reconocedor activo de onboarding
 
-// Hablar durante el onboarding (sin modo wake, sin historial)
+function _obAbortRec() {
+  if (_obRec) { try { _obRec.abort(); } catch(e){} _obRec = null; }
+}
+
 function obSpeak(text, lang, onEnd) {
+  _obAbortRec();           // asegurar que el mic está cerrado
   tts.cancel();
   obSpeaking = true;
 
-  // Actualizar UI para que se vea que IRIS está hablando, no escuchando
-  const hintEl = document.getElementById('obHint');
-  if (hintEl) hintEl.textContent = '🔊 HABLANDO...';
+  document.getElementById('obHint').textContent = '🔊 HABLANDO...';
 
   const utt = new SpeechSynthesisUtterance(text);
   utt.lang = lang || 'es-MX';
   utt.rate = 0.88; utt.pitch = 1.05; utt.volume = 1;
+
   const voices = tts.getVoices();
   const prefix = (lang || 'es').split('-')[0];
   const v = voices.find(v => v.lang.startsWith(prefix) && (v.name.includes('Google') || v.name.includes('Microsoft')))
@@ -1293,355 +1304,322 @@ function obSpeak(text, lang, onEnd) {
           || voices.find(v => v.lang.startsWith('es'));
   if (v) utt.voice = v;
 
-  const isMob = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  // Tiempo estimado de habla + margen para que el audio realmente termine
+  // En móvil el evento onend llega ANTES de que el altavoz termina físicamente
+  const charsPerSec = isMobile ? 9 : 13;
+  const estMs = Math.max(1200, (text.length / charsPerSec) * 1000 / 0.88);
+  const marginMs = isMobile ? 1400 : 300;
 
-  // Calcular tiempo estimado de la frase (chars / velocidad) + margen generoso
-  // En móvil usamos 10 chars/s a rate 0.88, con +1200ms de margen extra
-  const estMs = isMob
-    ? Math.max(1500, (text.length / 10) * 1000 / 0.88) + 1200
-    : Math.max(400, (text.length / 13) * 1000 / 0.88) + 300;
-
-  let endFired = false;
+  let fired = false;
   const fireEnd = () => {
-    if (endFired) return;
-    endFired = true;
+    if (fired) return;
+    fired = true;
     obSpeaking = false;
-    // Añadir delay adicional DESPUÉS de que el audio termina antes de abrir mic
-    const postDelay = isMob ? 800 : 150;
-    setTimeout(() => { if (onEnd) onEnd(); }, postDelay);
+    if (onEnd) setTimeout(onEnd, isMobile ? 600 : 80);
   };
 
-  // Fallback por tiempo: si onend no llega (bug Android), disparar manualmente
-  const fallbackTimer = setTimeout(() => {
-    utt.onend = null; utt.onerror = null;
-    fireEnd();
-  }, estMs + 500);
-
-  utt.onend = () => { clearTimeout(fallbackTimer); fireEnd(); };
-  utt.onerror = () => { clearTimeout(fallbackTimer); fireEnd(); };
+  // Fallback: si onend no llega (bug Android), disparar por tiempo
+  const fallback = setTimeout(fireEnd, estMs + marginMs + 500);
+  utt.onend  = () => { clearTimeout(fallback); setTimeout(fireEnd, isMobile ? marginMs : 100); };
+  utt.onerror= () => { clearTimeout(fallback); setTimeout(fireEnd, 200); };
 
   tts.speak(utt);
 }
 
-// Escuchar una respuesta del usuario durante onboarding
-function obListen(lang, onResult, onEmpty) {
-  // NUNCA abrir el mic si IRIS todavía está hablando
+// ── Escuchar: SOLO llama al mic cuando obSpeaking===false ──
+function obListen(lang, onResult, onEmpty, timeoutMs) {
+  // Esperar a que IRIS termine de hablar
   if (obSpeaking) {
-    setTimeout(() => obListen(lang, onResult, onEmpty), 300);
+    setTimeout(() => obListen(lang, onResult, onEmpty, timeoutMs), 200);
     return;
   }
 
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SR) { if(onEmpty) onEmpty(); return; }
+  if (!SR) { onEmpty && onEmpty(); return; }
 
-  const isMob = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-  // Delay adicional antes de abrir el mic (el audio del sistema tarda en liberar)
-  const startDelay = isMob ? 600 : 100;
+  _obAbortRec();
 
+  const openDelay = isMobile ? 500 : 80;
   setTimeout(() => {
-    // Doble check: si volvió a hablar mientras esperábamos, reintentar
-    if (obSpeaking) { setTimeout(() => obListen(lang, onResult, onEmpty), 300); return; }
+    if (obSpeaking) { setTimeout(() => obListen(lang, onResult, onEmpty, timeoutMs), 200); return; }
 
     const r = new SR();
+    _obRec = r;
     r.lang = lang || 'es-MX';
     r.continuous = false;
     r.interimResults = false;
     r.maxAlternatives = 3;
 
-    const hintEl = document.getElementById('obHint');
-    if (hintEl) hintEl.textContent = '🎙 ESCUCHANDO...';
+    document.getElementById('obHint').textContent = '🎙 HABLA AHORA';
 
     let heard = '';
     let fired = false;
 
-    const done = (result) => {
-      if (fired) return;
-      fired = true;
+    const done = (res) => {
+      if (fired) return; fired = true;
       clearTimeout(timer);
+      if (_obRec === r) _obRec = null;
       try { r.abort(); } catch(e) {}
-      if (result && result.trim().length > 0) {
-        onResult && onResult(result.trim());
+      if (res && res.trim().length > 0) {
+        onResult && onResult(res.trim());
       } else {
         onEmpty && onEmpty();
       }
     };
 
-    // Timeout de seguridad: 12s sin respuesta → siguiente paso
-    const timer = setTimeout(() => done(null), 12000);
+    const limit = timeoutMs || 10000;
+    const timer = setTimeout(() => done(null), limit);
 
     r.onresult = e => {
-      const finalResult = Array.from(e.results).find(r => r.isFinal);
-      if (!finalResult) return;
-      const text = finalResult[0].transcript.trim();
-      if (text.length > 0) {
-        heard = text;
-        // Pequeño delay para que el reconocedor cierre limpio en móvil
-        setTimeout(() => done(heard), isMob ? 400 : 150);
+      const fin = Array.from(e.results).find(x => x.isFinal);
+      if (!fin) return;
+      const t = fin[0].transcript.trim();
+      if (t.length > 0) {
+        heard = t;
+        setTimeout(() => done(heard), isMobile ? 350 : 100);
       }
     };
-
-    r.onend = () => {
-      if (!fired) done(heard.length > 0 ? heard : null);
-    };
-
-    r.onerror = (e) => {
-      if (e.error === 'no-speech') { done(null); return; }
+    r.onend  = () => { if (!fired) done(heard || null); };
+    r.onerror= e  => {
       if (e.error === 'aborted') return;
+      if (e.error === 'no-speech') { done(null); return; }
       done(null);
     };
 
     try { r.start(); } catch(e) { done(null); }
-  }, startDelay);
+  }, openDelay);
 }
 
-// ── FLUJO DE ONBOARDING POR VOZ ──
-// Paso 1: Detectar idioma del dispositivo → hablarle en ese idioma
-// Paso 2: Preguntar nombre
-// Paso 3: Confirmar idioma / preguntar si entiende otros
-// Paso 4: Leer términos y pedir aceptación
-// Paso 5: Finalizar
+// ── Eco del TTS: palabras que IRIS pronuncia en su intro ──
+const OB_ECO_WORDS = [
+  'hola','soy','iris','asistente','visual','inteligente','preguntas',
+  'configurarme','llamas','hello','my','name','what','your',
+  'assistant','questions','setup','bonjour','assistante','visuelle',
+  'assistente','hallo','assistentin','fragen','nombre','voy','hacerte',
+  'cómo','hablaré','español','english','speak','language','idioma',
+  'perfecto','perfect','parfait','perfeito','perfekt','primero','first',
+  'pregunta','quiero','elige','elije','choose'
+];
+
+function isEcoNombre(heard) {
+  const low   = heard.toLowerCase();
+  const words = low.split(/\s+/);
+  const hits  = words.filter(w => OB_ECO_WORDS.includes(w)).length;
+  return hits >= 2 || low.includes('iris') || low.includes('asistente') || low.includes('assistant') || words.length > 5;
+}
+
+// ══════════════════════════════════════════
+// ── PASOS DEL ONBOARDING ──
+// 1. Saludo + preguntar idioma
+// 2. Confirmar idioma detectado (sí/no) → si no, preguntar cuál
+// 3. Preguntar nombre
+// 4. Términos (acepto / léelos)
+// 5. Finalizar
+// ══════════════════════════════════════════
 
 function obStart() {
   const deviceLang = detectDeviceLang();
-  obData.lang = deviceLang.code;
-  currentRecLang = deviceLang.code;
+  obData.lang      = deviceLang.code;
+  currentRecLang   = deviceLang.code;
 
-  obSetUI('👋', 'Iniciando...', 'UN MOMENTO...');
+  obSetUI('👋', 'Bienvenido', 'UN MOMENTO...');
 
-  // Presentación sin preguntar nada — luego pregunta nombre por separado
+  // Solo saludo — la pregunta del idioma va por separado
   const introMsgs = {
-    'es': `Hola, soy IRIS, tu asistente visual inteligente. Voy a hacerte unas preguntas rápidas para configurarme.`,
-    'en': `Hello, I'm IRIS, your visual assistant. I'll ask you a few quick questions to set up.`,
-    'fr': `Bonjour, je suis IRIS, ton assistante visuelle. Je vais te poser quelques questions rapides.`,
-    'pt': `Olá, sou IRIS, sua assistente visual. Vou fazer algumas perguntas rápidas.`,
-    'de': `Hallo, ich bin IRIS, deine visuelle Assistentin. Ich stelle dir ein paar kurze Fragen.`,
+    'es': 'Hola, soy IRIS, tu asistente visual inteligente.',
+    'en': "Hello, I'm IRIS, your intelligent visual assistant.",
+    'fr': "Bonjour, je suis IRIS, ton assistante visuelle intelligente.",
+    'pt': 'Olá, sou IRIS, sua assistente visual inteligente.',
+    'de': 'Hallo, ich bin IRIS, deine intelligente visuelle Assistentin.',
   };
-  const introMsg = introMsgs[deviceLang.code.split('-')[0]] || introMsgs['es'];
+  const msg = introMsgs[deviceLang.code.split('-')[0]] || introMsgs['es'];
 
-  setTimeout(() => {
-    obSpeak(introMsg, deviceLang.code, () => {
-      // Solo después de que terminó la intro, preguntar el nombre
-      obStepNombre(deviceLang);
-    });
-  }, 400);
+  setTimeout(() => obSpeak(msg, deviceLang.code, () => obStepIdiomaConfirmar(deviceLang)), 500);
 }
 
-// Palabras que IRIS usa en su presentación — si el "nombre" las contiene, es eco del TTS
-const OB_IRIS_WORDS = ['hola','soy','iris','asistente','visual','inteligente','preguntas','rápidas','configurarme','llamas','hello','what','your','name','assistant','questions','quick','setup','bonjour','assistante','visuelle','olá','assistente','hallo','assistentin','fragen'];
+// Paso 1: ¿El idioma del dispositivo es el preferido?
+function obStepIdiomaConfirmar(deviceLang) {
+  const prefix = deviceLang.code.split('-')[0];
+  const msgs = {
+    'es': `Detecté que tu dispositivo está en ${deviceLang.nombre}. ¿Es tu idioma preferido? Di sí o no.`,
+    'en': `I detected your device is in ${deviceLang.nombre}. Is that your preferred language? Say yes or no.`,
+    'fr': `Ton appareil est en ${deviceLang.nombre}. Est-ce ta langue préférée? Dis oui ou non.`,
+    'pt': `Detectei que seu dispositivo está em ${deviceLang.nombre}. É seu idioma preferido? Diga sim ou não.`,
+    'de': `Dein Gerät ist auf ${deviceLang.nombre}. Ist das deine bevorzugte Sprache? Sag ja oder nein.`,
+  };
+  const msg = msgs[prefix] || msgs['es'];
+  obSetUI('🌐', `¿Idioma: ${deviceLang.nombre}?`, '🔊 HABLANDO...');
+  obSpeak(msg, deviceLang.code, () => {
+    obListen(deviceLang.code, (heard) => {
+      const h = heard.toLowerCase();
+      const yes = /\b(s[ií]|yes|oui|ja|sim|s[ií])\b/.test(h);
+      if (yes) {
+        obData.lang = deviceLang.code;
+        obStepNombre();
+      } else {
+        obStepPreguntarIdioma();
+      }
+    }, () => {
+      // Sin respuesta → asumir idioma del dispositivo y seguir
+      obData.lang = deviceLang.code;
+      obStepNombre();
+    });
+  });
+}
 
-function obStepNombre(deviceLang) {
-  obSetUI('👤', '¿Cómo te llamas?', '🔊 HABLANDO...');
-  const nameMsgs = {
+// Paso 1b: preguntar idioma manualmente
+function obStepPreguntarIdioma() {
+  const msg = 'Di el nombre de tu idioma preferido: español, inglés, francés, portugués o alemán.';
+  obSetUI('🌍', '¿Qué idioma prefieres?', '🔊 HABLANDO...');
+  obSpeak(msg, 'es-MX', () => {
+    obListen('es-MX', (heard) => {
+      const h = heard.toLowerCase();
+      let found = null;
+      for (const [, val] of Object.entries(IDIOMAS)) {
+        if (h.includes(val.nombre.toLowerCase()) || h.includes(val.code.split('-')[0])) {
+          found = val; break;
+        }
+      }
+      if (!found) {
+        // No reconoció → repetir
+        const retry = 'No entendí. Di el nombre de tu idioma: español, inglés, francés, portugués o alemán.';
+        obSpeak(retry, 'es-MX', () => obStepPreguntarIdioma());
+        return;
+      }
+      obData.lang    = found.code;
+      currentRecLang = found.code;
+      const prefix   = found.code.split('-')[0];
+      const confirmMsgs = {
+        'es': `Perfecto, hablaré en ${found.nombre}.`,
+        'en': `Perfect, I'll speak in ${found.nombre}.`,
+        'fr': `Parfait, je parlerai en ${found.nombre}.`,
+        'pt': `Perfeito, falarei em ${found.nombre}.`,
+        'de': `Perfekt, ich spreche ${found.nombre}.`,
+      };
+      obSpeak(confirmMsgs[prefix] || confirmMsgs['es'], found.code, () => obStepNombre());
+    }, () => obStepPreguntarIdioma());
+  });
+}
+
+// Paso 2: preguntar nombre
+function obStepNombre() {
+  const prefix = obData.lang.split('-')[0];
+  const qMsgs = {
     'es': '¿Cómo te llamas?',
     'en': "What's your name?",
     'fr': "Comment tu t'appelles?",
     'pt': 'Como você se chama?',
     'de': 'Wie heißt du?',
   };
-  const nameQ = nameMsgs[deviceLang.code.split('-')[0]] || nameMsgs['es'];
-  // Primero hablar la pregunta, LUEGO escuchar
-  obSpeak(nameQ, deviceLang.code, () => {
-    obSetUI('👤', '¿Cómo te llamas?', '🎙 HABLA AHORA');
-    obListen(deviceLang.code, (heard) => {
-      if (!heard || heard.length < 2) {
-        const retry = { 'es':'No pude escuchar tu nombre. ¿Me lo repites?', 'en':"I couldn't hear your name. Can you repeat it?" };
-        obSpeak(retry[deviceLang.code.split('-')[0]] || retry['es'], deviceLang.code,
-          () => obStepNombre(deviceLang));
-        return;
-      }
-      // Detectar eco de la voz de IRIS
-      const heardLow = heard.toLowerCase();
-      const wordsInHeard = heardLow.split(' ');
-      const ecoCount = wordsInHeard.filter(w => OB_IRIS_WORDS.includes(w)).length;
-      const isEco = ecoCount >= 2 || heardLow.includes('iris') || heardLow.includes('asistente') || heardLow.includes('assistant');
-      if (isEco) {
-        obStepNombre(deviceLang);
-        return;
-      }
-      // Nombre muy largo (más de 4 palabras) = probablemente eco o ruido
-      if (wordsInHeard.length > 4) {
-        const retry2 = { 'es':'No pude escuchar bien tu nombre. Di solo tu nombre.', 'en':"I couldn't hear your name clearly. Say just your name." };
-        obSpeak(retry2[deviceLang.code.split('-')[0]] || retry2['es'], deviceLang.code,
-          () => obStepNombre(deviceLang));
-        return;
-      }
-      obData.nombre = heard.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
-      userProfile.nombre = obData.nombre;
-      obStepIdiomaConfirmar(deviceLang);
-    }, () => obStepNombre(deviceLang));
+  const q = qMsgs[prefix] || qMsgs['es'];
+  obSetUI('👤', q, '🔊 HABLANDO...');
+  obSpeak(q, obData.lang, () => {
+    obListenNombre();
   });
 }
 
-function obStepIdiomaConfirmar(deviceLang) {
-  const nombre = obData.nombre;
-  const msgs = {
-    'es': `Mucho gusto, ${nombre}. Detecté que tu dispositivo está en ${deviceLang.nombre}. ¿Es este tu idioma preferido? Di sí o no.`,
-    'en': `Nice to meet you, ${nombre}. I detected your device is in ${deviceLang.nombre}. Is this your preferred language? Say yes or no.`,
-  };
-  const msg = msgs[deviceLang.code.split('-')[0]] || msgs['es'];
-  obSetUI('🌐', `¿Tu idioma es ${deviceLang.nombre}?`, 'DI "SÍ" O "NO"');
-  obSpeak(msg, deviceLang.code, () => {
-    obListen(deviceLang.code, (heard) => {
-      const h = heard.toLowerCase();
-      const isYes = /\b(sí|si|yes|oui|ja|sim|sì)\b/.test(h);
-      if (isYes) {
-        obData.lang = deviceLang.code;
-        obStepIdiomasAdicionales(deviceLang);
-      } else {
-        obStepPreguntarIdioma();
-      }
-    }, () => {
-      obData.lang = deviceLang.code;
-      obStepIdiomasAdicionales(deviceLang);
-    });
+function obListenNombre() {
+  obSetUI('👤', '¿Cómo te llamas?', '🎙 HABLA AHORA');
+  obListen(obData.lang, (heard) => {
+    if (isEcoNombre(heard)) {
+      // Era eco del TTS — silencio y reintentar
+      obListenNombre();
+      return;
+    }
+    const nombre = heard.split(' ')
+      .slice(0, 3) // máx 3 palabras para nombre
+      .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+      .join(' ');
+    obData.nombre     = nombre;
+    userProfile.nombre= nombre;
+
+    const prefix = obData.lang.split('-')[0];
+    const greetMsgs = {
+      'es': `Mucho gusto, ${nombre}.`,
+      'en': `Nice to meet you, ${nombre}.`,
+      'fr': `Enchanté, ${nombre}.`,
+      'pt': `Prazer, ${nombre}.`,
+      'de': `Schön, ${nombre}.`,
+    };
+    obSetUI('✅', `Hola, ${nombre}`, '🔊 HABLANDO...');
+    obSpeak(greetMsgs[prefix] || greetMsgs['es'], obData.lang, () => obStepTerminos());
+  }, () => {
+    // No escuchó → reintentar directo (sin volver a hablar)
+    obListenNombre();
   });
 }
 
-function obStepPreguntarIdioma() {
-  obSetUI('🌍', '¿En qué idioma prefieres que te hable?', 'DI EL NOMBRE DEL IDIOMA');
-  obSpeak('¿En qué idioma prefieres que me comunique contigo? Puedes decir español, inglés, francés, portugués, alemán, italiano u otro.', 'es-MX', () => {
-    obListen('es-MX', (heard) => {
-      const h = heard.toLowerCase();
-      let detected = IDIOMAS['es']; // default
-      for (const [key, val] of Object.entries(IDIOMAS)) {
-        if (h.includes(val.nombre)) { detected = val; break; }
-      }
-      obData.lang = detected.code;
-      currentRecLang = detected.code;
-      obSpeak(`Perfecto, me comunicaré contigo en ${detected.nombre}.`, detected.code,
-        () => obStepIdiomasAdicionales(detected));
-    }, () => obStepTerminos());
-  });
-}
-
-function obStepIdiomasAdicionales(langObj) {
-  const code = langObj.code || obData.lang;
-  const prefix = code.split('-')[0];
-  const msgs = {
-    'es': `¿Entiendes algún otro idioma con fluidez, más del noventa por ciento? Por ejemplo inglés, francés, portugués. Di el nombre o di "no".`,
-    'en': `Do you understand any other language fluently, more than ninety percent? For example Spanish, French. Say the name or say "no".`,
-  };
-  const msg = msgs[prefix] || msgs['es'];
-  obSetUI('🗣', '¿Entiendes otro idioma?', 'DI EL IDIOMA O "NO"');
-
-  const lp = getLangProfile();
-  lp.preferido = obData.lang;
-  if (!lp.entiende.includes(obData.lang)) lp.entiende.push(obData.lang);
-
-  obSpeak(msg, obData.lang, () => {
-    obListen(obData.lang, (heard) => {
-      const h = heard.toLowerCase();
-      if (/\b(no|nop|nope|ninguno|ningún)\b/.test(h)) {
-        saveLangProfile(lp);
-        obStepTerminos();
-        return;
-      }
-      // Buscar idioma mencionado
-      let added = false;
-      for (const [key, val] of Object.entries(IDIOMAS)) {
-        if (h.includes(val.nombre) || h.includes(key)) {
-          if (!lp.entiende.includes(val.code)) {
-            lp.entiende.push(val.code);
-            added = true;
-          }
-        }
-      }
-      saveLangProfile(lp);
-      if (added) {
-        const confirmMsgs = {
-          'es': `Guardado. ¿Entiendes algún otro idioma más? Di el nombre o di "no".`,
-          'en': `Saved. Do you understand any other language? Say the name or say "no".`,
-        };
-        const confirmMsg = confirmMsgs[obData.lang.split('-')[0]] || confirmMsgs['es'];
-        obSpeak(confirmMsg, obData.lang, () => {
-          obListen(obData.lang, (h2) => {
-            if (/\b(no|nop|nope|ninguno)\b/.test(h2.toLowerCase())) {
-              obStepTerminos();
-            } else {
-              // Buscar otro idioma más
-              for (const [key, val] of Object.entries(IDIOMAS)) {
-                if (h2.toLowerCase().includes(val.nombre)) {
-                  if (!lp.entiende.includes(val.code)) lp.entiende.push(val.code);
-                }
-              }
-              saveLangProfile(lp);
-              obStepTerminos();
-            }
-          }, obStepTerminos);
-        });
-      } else {
-        obStepTerminos();
-      }
-    }, () => { saveLangProfile(lp); obStepTerminos(); });
-  });
-}
-
-const TERMINOS_TEXT = `Términos y condiciones de uso de IRIS. Primero: IRIS es una herramienta de accesibilidad, no un dispositivo médico. No sustituye diagnósticos ni tratamientos profesionales. Segundo: úsala solo para fines lícitos y de asistencia personal. Tercero: IRIS puede cometer errores en la lectura de textos. La información sobre medicamentos debe verificarse con un profesional. Cuarto: tus datos de perfil se guardan localmente en tu dispositivo y no se comparten sin tu consentimiento. Quinto: el servicio es un prototipo educativo sin garantía de disponibilidad continua. Sexto: el equipo desarrollador no se responsabiliza por decisiones basadas en la información de IRIS. Séptimo: menores de edad requieren autorización de su tutor. Al aceptar, confirmas haber entendido estos términos.`;
+// Paso 3: términos
+const TERMINOS_TEXT = 'Términos y condiciones de uso de IRIS. Primero: IRIS es una herramienta de accesibilidad, no un dispositivo médico. No sustituye diagnósticos ni tratamientos profesionales. Segundo: úsala solo para fines lícitos y de asistencia personal. Tercero: IRIS puede cometer errores en la lectura de textos. La información sobre medicamentos debe verificarse con un profesional. Cuarto: tus datos de perfil se guardan localmente en tu dispositivo y no se comparten sin tu consentimiento. Quinto: el servicio es un prototipo educativo sin garantía de disponibilidad continua. Sexto: el equipo desarrollador no se responsabiliza por decisiones basadas en la información de IRIS. Séptimo: menores de edad requieren autorización de su tutor. Al aceptar, confirmas haber entendido estos términos.';
 
 function obStepTerminos() {
-  document.getElementById('obTermsBox').textContent = TERMINOS_TEXT;
   const prefix = obData.lang.split('-')[0];
+  const tBox = document.getElementById('obTermsBox');
+  tBox.textContent    = TERMINOS_TEXT;
+  tBox.style.display  = 'block';
   const msgs = {
-    'es': `Tengo unos términos y condiciones. ¿Los acepto directamente, o prefieres que te los lea primero? Di "acepto" para continuar, o "léelos" para escucharlos.`,
-    'en': `I have some terms and conditions. Do you accept directly, or would you like me to read them first? Say "accept" to continue, or "read them" to listen.`,
+    'es': 'Antes de continuar tengo unos términos. Di "acepto" para continuar, o "léelos" para escucharlos primero.',
+    'en': 'Before continuing I have some terms. Say "I accept" to continue, or "read them" to listen first.',
+    'fr': "Avant de continuer j'ai des conditions. Dis accepte pour continuer, ou lis-les pour les écouter.",
+    'pt': 'Antes de continuar tenho termos. Diga aceito para continuar, ou leia-os para ouvir primeiro.',
+    'de': 'Vor dem Fortfahren gibt es Bedingungen. Sag ich stimme zu um fortzufahren, oder lies sie vor.',
   };
   const msg = msgs[prefix] || msgs['es'];
-  obSetUI('📋', 'Términos y condiciones', 'DI "ACEPTO" O "LÉELOS"', true);
-  obSpeak(msg, obData.lang, () => {
-    obListen(obData.lang, (heard) => {
-      const h = heard.toLowerCase();
-      const wantsRead = /\b(l[eé]elos|l[eé]elas|l[eé]e|read|lire|lesen|ler)\b/.test(h);
-      const acceptsDirect = /\b(acepto|accept|sí|si|yes|i accept|oui|ja|sim|directo|directamente)\b/.test(h);
+  obSetUI('📋', 'Términos y condiciones', '🔊 HABLANDO...');
+  tBox.style.display = 'block';
+  obSpeak(msg, obData.lang, () => obEscucharTerminos());
+}
 
-      if (wantsRead) {
-        // Quiere escucharlos → leer y luego pedir aceptación
-        const readMsg = { 'es': 'Bien, escucha con atención.', 'en': 'Alright, listen carefully.' };
-        obSpeak(readMsg[prefix] || readMsg['es'], obData.lang, () => {
-          obSpeak(TERMINOS_TEXT, obData.lang, () => obStepPedirAceptacion());
-        });
-      } else if (acceptsDirect) {
-        // Acepta directo → no leer
-        obData.termsAccepted = true;
-        obData.timestamp = new Date().toISOString();
-        obFinish();
-      } else {
-        // No entendió → preguntar de nuevo
-        const retryMsg = { 'es': 'No entendí. Di "acepto" para continuar, o "léelos" para escuchar los términos.', 'en': 'I did not understand. Say "accept" to continue, or "read them" to listen.' };
-        obSpeak(retryMsg[prefix] || retryMsg['es'], obData.lang, () => obStepTerminos());
-      }
-    }, () => {
-      // No escuchó nada → preguntar de nuevo
-      obStepTerminos();
-    });
+function obEscucharTerminos() {
+  const prefix = obData.lang.split('-')[0];
+  obSetUI('📋', 'Términos', '🎙 DI "ACEPTO" O "LÉELOS"');
+  document.getElementById('obTermsBox').style.display = 'block';
+  obListen(obData.lang, (heard) => {
+    const h = heard.toLowerCase();
+    const acepta = /\b(acepto|accept|i accept|oui|ja|sim|s[ií]|yes|directo|directamente|continuar)\b/.test(h);
+    const leer   = /\b(l[eé]elos|l[eé]elas|l[eé]e|read|lire|lesen|ler|léeme|escuchar|escúchalos)\b/.test(h);
+    if (acepta) {
+      obData.termsAccepted = true;
+      obData.timestamp = new Date().toISOString();
+      obFinish();
+    } else if (leer) {
+      const readMsgs = { 'es':'Bien, escucha con atención.', 'en':'Alright, listen carefully.', 'fr':'Bien, écoute.', 'pt':'Certo, escute.', 'de':'Gut, höre zu.' };
+      obSpeak(readMsgs[prefix] || readMsgs['es'], obData.lang, () => {
+        obSpeak(TERMINOS_TEXT, obData.lang, () => obPedirAceptacion());
+      });
+    } else {
+      // No entendió — repetir instrucción brevemente
+      const retry = { 'es':'Di "acepto" para continuar, o "léelos" para escucharlos.', 'en':'Say accept to continue, or read them to listen.' };
+      obSpeak(retry[prefix] || retry['es'], obData.lang, () => obEscucharTerminos());
+    }
+  }, () => {
+    // Silencio — volver a escuchar sin hablar
+    obEscucharTerminos();
   });
 }
 
-function obStepPedirAceptacion() {
+function obPedirAceptacion() {
   const prefix = obData.lang.split('-')[0];
   const msgs = {
-    'es': `¿Aceptas los términos y condiciones? Di "acepto" para continuar.`,
-    'en': `Do you accept the terms and conditions? Say "I accept" to continue.`,
+    'es': '¿Aceptas los términos y condiciones? Di "acepto" para continuar.',
+    'en': 'Do you accept the terms? Say "I accept" to continue.',
+    'fr': 'Acceptes-tu les conditions? Dis accepte pour continuer.',
+    'pt': 'Você aceita os termos? Diga aceito para continuar.',
+    'de': 'Akzeptierst du die Bedingungen? Sag ich stimme zu.',
   };
-  const msg = msgs[prefix] || msgs['es'];
-  obSetUI('✅', '¿Aceptas los términos?', 'DI "ACEPTO"');
-  obSpeak(msg, obData.lang, () => {
+  obSetUI('✅', '¿Aceptas?', '🔊 HABLANDO...');
+  obSpeak(msgs[prefix] || msgs['es'], obData.lang, () => {
     obListen(obData.lang, (heard) => {
-      const h = heard.toLowerCase();
-      const accepted = /\b(acepto|sí acepto|accept|yes|i accept|oui|ja|sim)\b/.test(h);
-      if (accepted) {
+      const acepta = /\b(acepto|accept|i accept|oui|ja|sim|s[ií]|yes)\b/.test(heard.toLowerCase());
+      if (acepta) {
         obData.termsAccepted = true;
         obData.timestamp = new Date().toISOString();
         obFinish();
       } else {
-        // No aceptó — informar que se necesita consentimiento y preguntar de nuevo
-        const insistMsgs = {
-          'es': `Necesito tu consentimiento para continuar. ¿Aceptas los términos? Di "acepto".`,
-          'en': `I need your consent to continue. Do you accept the terms? Say "I accept".`,
-        };
-        const insistMsg = insistMsgs[prefix] || insistMsgs['es'];
-        obSpeak(insistMsg, obData.lang, () => obStepPedirAceptacion());
+        const insist = { 'es':'Necesito tu aceptación para continuar. Di "acepto".', 'en':'I need your acceptance. Say "I accept".' };
+        obSpeak(insist[prefix] || insist['es'], obData.lang, () => obPedirAceptacion());
       }
-    }, () => obStepPedirAceptacion());
+    }, () => obPedirAceptacion());
   });
 }
 
@@ -1652,18 +1630,19 @@ function obFinish() {
   localStorage.setItem(OB_LANG_KEY, obData.lang);
   saveContract(nombre, obData.timestamp || new Date().toISOString());
 
+  const prefix = obData.lang.split('-')[0];
   const msgs = {
     'es': `¡Perfecto, ${nombre}! Ya estoy lista para ayudarte. Di mi nombre en cualquier momento para activarme.`,
-    'en': `Perfect, ${nombre}! I'm ready to help you. Say my name at any time to activate me.`,
+    'en': `Perfect, ${nombre}! I'm ready to help you. Say my name anytime to activate me.`,
+    'fr': `Parfait, ${nombre}! Je suis prête. Dis mon nom pour m'activer.`,
+    'pt': `Perfeito, ${nombre}! Estou pronta. Diga meu nome para me ativar.`,
+    'de': `Perfekt, ${nombre}! Ich bin bereit. Sag meinen Namen, um mich zu aktivieren.`,
   };
-  const msg = msgs[obData.lang.split('-')[0]] || msgs['es'];
   obSetUI('🎉', `¡Listo, ${nombre}!`, 'IRIS ESTÁ LISTA');
-
-  obSpeak(msg, obData.lang, () => {
+  obSpeak(msgs[prefix] || msgs['es'], obData.lang, () => {
     const ob = document.getElementById('onboarding');
     ob.classList.add('hidden');
     setTimeout(() => { ob.style.display = 'none'; }, 700);
-    // Guardar idioma en el perfil antes de construir el prompt
     const lp = getLangProfile();
     lp.preferido = obData.lang;
     if (!lp.entiende.includes(obData.lang)) lp.entiende.push(obData.lang);
@@ -1674,7 +1653,7 @@ function obFinish() {
     bienvenidaDone = true;
     suggestions.classList.add('visible');
     hint.style.opacity = '0.4';
-    applyUILang(); // UI en el idioma del usuario
+    applyUILang();
     setTimeout(startWake, 300);
   });
 }
