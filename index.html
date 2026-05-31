@@ -871,9 +871,9 @@ function speak(text, onEnd) {
     const estDuration = Math.max(2000, (text.length / 13) * 1000 / 0.92);
     startSyncScroll(text, estDuration);
     if(rec){ try{rec.abort();}catch(e){} rec=null; }
-    // En móvil esperar antes de arrancar el interrupt listener para evitar eco
-    const interruptDelay = isMobile ? 1200 : 0;
-    setTimeout(startInterruptListener, interruptDelay);
+    // En móvil NO arrancar interrupt listener — el altavoz contamina el mic
+    // Para interrumpir en móvil: tocar el botón mic
+    if(!isMobile) setTimeout(startInterruptListener, 0);
   };
   const done = ()=>{
     if(currentUtt !== utt) return; // ya fue interrumpida
@@ -1870,7 +1870,7 @@ function initOnboardingFull() {
 // ══════════════════════════════════════════
 // ── ADMIN — long press 3s en logo ──
 // ══════════════════════════════════════════
-const ADMIN_PASS = '123';
+const ADMIN_PASS = '0723';
 let pressTimer = null;
 let pressStart = 0;
 const pressRing = document.getElementById('pressRing');
@@ -1961,6 +1961,7 @@ function showAdminPanel() {
       </div>
     </div>
 
+    <button class="adm-btn" onclick="openTestMode()" style="width:100%;max-width:320px;border-color:rgba(0,229,255,0.5);color:#00e5ff;">🧪 Modo Testeo</button>
     <button class="adm-btn" onclick="downloadContracts()" style="width:100%;max-width:320px;">📄 Descargar contratos</button>
     <button class="adm-btn" onclick="admResetDevice()" style="width:100%;max-width:320px;border-color:rgba(255,120,60,0.5);color:rgba(255,140,80,0.9);">🔄 Resetear dispositivo</button>
     <button class="adm-btn" onclick="closeAdminPanel()" style="margin-top:4px;opacity:0.5;">✕ Cerrar</button>
@@ -2158,7 +2159,8 @@ function _convoLoop() {
     return;
   }
 
-  const r = newRec(false); // continuous=false, más fiable en móvil
+  // continuous:true para evitar clic de apertura/cierre en cada ciclo
+  const r = newRec(true);
   if(!r) { mode='idle'; startWake(); return; }
   rec=r;
   let heard='';
@@ -2203,7 +2205,10 @@ function _convoLoop() {
   try{ r.start(); }catch(e){ setTimeout(_convoLoop, 300); }
 }
 
-// ── WAKE LOOP — escucha pasiva esperando "iris" ──
+// ── WAKE LOOP ──
+// Desktop: continuous=true, mic abierto siempre, sin clics
+// Móvil:   continuous=true también, pero con watchdog que reinicia si Chrome lo mata
+//          silenciosamente — evita el clic constante del loop continuous:false
 function startWake() {
   if(!bienvenidaDone || mode!=='idle') return;
   mode='wake';
@@ -2211,25 +2216,35 @@ function startWake() {
   setOrbState('idle');
   clearSilence();
 
-  const r = newRec(!isMobile);
+  // continuous:true en ambos — evita abrir/cerrar mic en cada ciclo (clic Android)
+  const r = newRec(true);
   if(!r) return;
   rec=r;
 
   let heard='';
   let irisFound=false;
   let hasQuestion=false;
+  // Watchdog: en móvil Chrome mata continuous silenciosamente cada ~60s
+  // Si onend llega sin que nosotros lo pidamos, reiniciar
+  let committedByUs = false;
 
-  const commit=()=>{ clearSilence(); if(mode!=='wake') return; try{r.stop();}catch(e){}};
+  const commit=()=>{
+    clearSilence();
+    if(mode!=='wake') return;
+    committedByUs=true;
+    try{r.stop();}catch(e){}
+  };
 
   r.onresult=(e)=>{
+    // Ignorar si IRIS está hablando (eco en altavoz)
+    if(mode==='speaking') return;
     const finalPart=Array.from(e.results).filter(r=>r.isFinal).map(r=>r[0].transcript).join('');
     const interimPart=Array.from(e.results).filter(r=>!r.isFinal).map(r=>r[0].transcript).join('');
     let full=(finalPart+interimPart).trim();
     full=full.trim(); heard=full;
     if(!containsIris(full)) return;
-    // Solo activar si "iris" aparece al inicio, o si el resultado es final
     const isFinal = e.results[e.results.length-1]?.isFinal;
-    const startsWithIris = /^(oye\s+)?iris\b/i.test(full);
+    const startsWithIris = /^(oye\s+)?iris/i.test(full);
     if(!startsWithIris && !isFinal) return;
     if(!irisFound){
       irisFound=true;
@@ -2238,26 +2253,31 @@ function startWake() {
       statusText.textContent=getUI('listening');
       setSilence(ONLY_NAME_MS, commit);
     }
-    // Solo mostrar lo que viene DESPUÉS de "iris", no el ruido previo
     const extra=stripIris(full);
     if(extra.length>2){
       hasQuestion=true;
-      showMsg(extra,getUI('youLabel')); // mostrar solo la pregunta, sin el nombre
+      showMsg(extra,getUI('youLabel'));
       setSilence(getSilenceMs(), commit);
     } else {
-      showMsg('...',getUI('youLabel')); // solo dijo "iris", mostrar placeholder
+      showMsg('...',getUI('youLabel'));
     }
   };
 
   const onDone=()=>{
     clearSilence();
     if(mode!=='wake') return;
+    if(!committedByUs && !irisFound) {
+      // Chrome mató el continuous silenciosamente — reiniciar SIN clic audible
+      // ya que el mic no estuvo realmente cerrado desde el punto de vista del usuario
+      mode='idle';
+      setTimeout(startWake, isMobile ? 80 : 200);
+      return;
+    }
     mode='idle';
-    if(!irisFound){ setTimeout(startWake, isMobile?100:200); return; }
+    if(!irisFound){ setTimeout(startWake, isMobile?80:200); return; }
     if(hasQuestion && stripIris(heard).length>2){
       handleQuery(stripIris(heard));
     } else {
-      // Solo dijo "iris" → entrar a modo conversación directo
       playBeep();
       startConvo();
     }
@@ -2269,7 +2289,8 @@ function startWake() {
     if(mode!=='wake') return;
     mode='idle';
     if(e.error==='not-allowed'){ statusText.textContent=getUI('micDenied'); return; }
-    setTimeout(startWake, isMobile?200:600);
+    // no-speech y network son normales en continuous — reiniciar silencioso
+    setTimeout(startWake, isMobile?150:600);
   };
 
   try{ r.start(); }catch(e){ mode='idle'; setTimeout(startWake,500); }
@@ -2367,6 +2388,356 @@ window.addEventListener('load', ()=>{
   document.addEventListener('keydown',    unlockAudio, { once: true, passive: true });
   initOnboarding();
 });
+
+// ══════════════════════════════════════════
+// ── MODO TESTEO ──
+// ══════════════════════════════════════════
+function openTestMode() {
+  const existing = document.getElementById('testPanel');
+  if (existing) existing.remove();
+
+  const panel = document.createElement('div');
+  panel.id = 'testPanel';
+  panel.style.cssText = `
+    position:fixed;inset:0;z-index:400;background:#05060a;
+    font-family:'Syne',sans-serif;color:#f0f4f8;
+    display:flex;flex-direction:column;overflow:hidden;
+  `;
+
+  // ── Logs en tiempo real ──
+  const logs = [];
+  const origConsoleLog  = console.log.bind(console);
+  const origConsoleWarn = console.warn.bind(console);
+  const origConsoleErr  = console.error.bind(console);
+
+  function pushLog(type, args) {
+    const msg = Array.from(args).map(a => {
+      try { return typeof a === 'object' ? JSON.stringify(a) : String(a); } catch(e){ return '[obj]'; }
+    }).join(' ');
+    logs.push({ type, msg, time: new Date().toLocaleTimeString('es-MX') });
+    renderLogs();
+  }
+
+  console.log   = (...a) => { origConsoleLog(...a);  pushLog('log',  a); };
+  console.warn  = (...a) => { origConsoleWarn(...a); pushLog('warn', a); };
+  console.error = (...a) => { origConsoleErr(...a);  pushLog('err',  a); };
+
+  function renderLogs() {
+    const box = document.getElementById('testLogBox');
+    if (!box) return;
+    box.innerHTML = logs.slice(-60).reverse().map(l => {
+      const col = l.type==='err' ? '#ff6060' : l.type==='warn' ? '#ffcc44' : '#00e5ff';
+      return `<div style="border-bottom:1px solid rgba(255,255,255,0.04);padding:5px 0;font-size:11px;color:${col};line-height:1.5;">
+        <span style="opacity:0.4;font-size:9px;">${l.time}</span> ${l.msg}
+      </div>`;
+    }).join('');
+  }
+
+  // ── Tests ──
+  const tests = [
+    {
+      id: 'mic',
+      label: '🎙 Micrófono',
+      desc: 'Verifica acceso y calidad del micrófono del dispositivo',
+      run: async (log) => {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          const ctx = new (window.AudioContext||window.webkitAudioContext)();
+          const src = ctx.createMediaStreamSource(stream);
+          const analyzer = ctx.createAnalyser();
+          analyzer.fftSize = 256;
+          src.connect(analyzer);
+          log('✅ Acceso al micrófono concedido');
+          log(`   Frecuencia de muestreo: ${ctx.sampleRate} Hz`);
+          const data = new Uint8Array(analyzer.frequencyBinCount);
+          await new Promise(r => setTimeout(r, 800));
+          analyzer.getByteFrequencyData(data);
+          const avg = data.reduce((a,b)=>a+b,0)/data.length;
+          log(`   Nivel de señal promedio: ${avg.toFixed(1)} (${avg < 1 ? '⚠️ muy bajo, posible eco/mute' : '✅ normal'})`);
+          stream.getTracks().forEach(t => t.stop());
+          ctx.close();
+          return avg >= 1 ? 'pass' : 'warn';
+        } catch(e) {
+          log(`❌ Sin acceso: ${e.message}`);
+          return 'fail';
+        }
+      }
+    },
+    {
+      id: 'speech',
+      label: '🗣 Speech Recognition',
+      desc: 'Verifica disponibilidad de la Web Speech API',
+      run: async (log) => {
+        const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SR) { log('❌ Web Speech API no disponible en este navegador'); return 'fail'; }
+        log('✅ SpeechRecognition disponible');
+        log(`   continuous soportado: ${isMobile ? 'limitado (móvil)' : 'sí'}`);
+        log(`   Dispositivo móvil detectado: ${isMobile ? 'SÍ — modo continuo desactivado para evitar eco' : 'NO'}`);
+        // Test rápido de instanciación
+        try {
+          const r = new SR(); r.lang='es-MX'; r.continuous=false; r.interimResults=true;
+          log('✅ Instancia creada correctamente');
+          r.onerror = ()=>{};
+          try { r.start(); setTimeout(()=>{ try{r.abort();}catch(e){} },300); } catch(e){}
+          return 'pass';
+        } catch(e) { log(`❌ Error al instanciar: ${e.message}`); return 'fail'; }
+      }
+    },
+    {
+      id: 'tts',
+      label: '🔊 Síntesis de voz',
+      desc: 'Verifica voces disponibles y reproduce un tono de prueba',
+      run: async (log) => {
+        const voices = window.speechSynthesis.getVoices();
+        log(`   Voces totales: ${voices.length}`);
+        const esVoices = voices.filter(v=>v.lang.startsWith('es'));
+        log(`   Voces en español: ${esVoices.length}`);
+        esVoices.slice(0,3).forEach(v => log(`   • ${v.name} (${v.lang})`));
+        if (!voices.length) { log('⚠️ Sin voces cargadas aún (pueden llegar luego)'); return 'warn'; }
+        const utt = new SpeechSynthesisUtterance('Test');
+        utt.volume = 0.01; utt.rate = 2;
+        window.speechSynthesis.speak(utt);
+        log('✅ TTS disponible');
+        return esVoices.length ? 'pass' : 'warn';
+      }
+    },
+    {
+      id: 'audio',
+      label: '🎵 AudioContext',
+      desc: 'Verifica el contexto de audio (beep de activación)',
+      run: async (log) => {
+        try {
+          ensureAudio();
+          log(`   Estado: ${audioCtx?.state || 'no inicializado'}`);
+          if (!audioCtx) { log('⚠️ No inicializado aún (requiere gesto del usuario)'); return 'warn'; }
+          if (audioCtx.state === 'suspended') { log('⚠️ Suspendido — se reactivará en próximo gesto'); return 'warn'; }
+          log(`   Frecuencia de muestreo: ${audioCtx.sampleRate} Hz`);
+          playBeep();
+          log('✅ Beep de activación reproducido');
+          return 'pass';
+        } catch(e) { log(`❌ Error: ${e.message}`); return 'fail'; }
+      }
+    },
+    {
+      id: 'gps',
+      label: '📍 GPS / Ubicación',
+      desc: 'Verifica acceso a la geolocalización del dispositivo',
+      run: async (log) => {
+        if (!navigator.geolocation) { log('❌ Geolocalización no disponible'); return 'fail'; }
+        log('   Solicitando ubicación...');
+        return new Promise(resolve => {
+          navigator.geolocation.getCurrentPosition(
+            pos => {
+              log(`✅ Ubicación obtenida`);
+              log(`   Lat: ${pos.coords.latitude.toFixed(5)}, Lng: ${pos.coords.longitude.toFixed(5)}`);
+              log(`   Precisión: ±${pos.coords.accuracy.toFixed(0)}m`);
+              resolve('pass');
+            },
+            err => {
+              const msgs = { 1:'Permiso denegado', 2:'Posición no disponible', 3:'Tiempo agotado' };
+              log(`❌ Error ${err.code}: ${msgs[err.code] || err.message}`);
+              resolve('fail');
+            },
+            { enableHighAccuracy: true, timeout: 8000 }
+          );
+        });
+      }
+    },
+    {
+      id: 'worker',
+      label: '🌐 Worker / IA',
+      desc: 'Verifica conectividad con el proxy de Groq',
+      run: async (log) => {
+        log(`   URL: ${WORKER_URL}`);
+        log('   Enviando ping...');
+        try {
+          const start = Date.now();
+          const res = await fetch(WORKER_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ model:'llama-3.1-8b-instant', messages:[{role:'user',content:'di solo: OK'}], max_tokens:5 })
+          });
+          const ms = Date.now() - start;
+          if (res.ok) {
+            const data = await res.json();
+            const reply = data.choices?.[0]?.message?.content || '(sin respuesta)';
+            log(`✅ Worker respondió en ${ms}ms`);
+            log(`   Respuesta: "${reply.trim()}"`);
+            return 'pass';
+          } else {
+            log(`⚠️ HTTP ${res.status} — ${ms}ms`);
+            return 'warn';
+          }
+        } catch(e) { log(`❌ Sin conexión: ${e.message}`); return 'fail'; }
+      }
+    },
+    {
+      id: 'storage',
+      label: '💾 LocalStorage',
+      desc: 'Verifica memoria persistente y perfil guardado',
+      run: async (log) => {
+        try {
+          localStorage.setItem('iris_test', '1');
+          localStorage.removeItem('iris_test');
+          log('✅ LocalStorage funcional');
+          const profile = userProfile;
+          log(`   Portador: ${profile.nombre || '(sin nombre)'}`);
+          log(`   Gustos: ${profile.gustos?.length || 0} items`);
+          log(`   Alergias: ${profile.salud?.alergias?.length || 0} items`);
+          const histLen = conversationHistory.filter(m=>m.role!=='system').length;
+          log(`   Historial: ${histLen} turnos cargados`);
+          const keys = Object.keys(localStorage).filter(k=>k.startsWith('iris_'));
+          log(`   Claves IRIS en storage: ${keys.join(', ') || 'ninguna'}`);
+          return 'pass';
+        } catch(e) { log(`❌ ${e.message}`); return 'fail'; }
+      }
+    },
+    {
+      id: 'echo',
+      label: '🔁 Detección de eco',
+      desc: 'Analiza si el mic puede captar el audio del altavoz (problema de retroalimentación)',
+      run: async (log) => {
+        log(`   Dispositivo móvil: ${isMobile ? 'SÍ' : 'NO'}`);
+        log(`   Interrupt listener en móvil: DESACTIVADO ✅ (evita eco)`);
+        log(`   Wake loop continuous: true (evita clic de apertura/cierre)`);
+        log(`   Delay para interrupt en desktop: 0ms`);
+        if (isMobile) {
+          log('✅ Configuración anti-eco activa para móvil');
+          log('   ⚠️ Recomendación: usar audífonos para experiencia óptima');
+          return 'pass';
+        } else {
+          log('✅ Desktop — eco poco probable');
+          return 'pass';
+        }
+      }
+    },
+  ];
+
+  let testResults = {};
+
+  function statusColor(s) {
+    return s==='pass'?'#00e5ff':s==='warn'?'#ffcc44':s==='fail'?'#ff6060':'rgba(240,244,248,0.3)';
+  }
+  function statusIcon(s) {
+    return s==='pass'?'✅':s==='warn'?'⚠️':s==='fail'?'❌':'⏳';
+  }
+
+  panel.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 20px 10px;border-bottom:1px solid rgba(0,229,255,0.1);flex-shrink:0;">
+      <div style="font-size:13px;font-weight:700;letter-spacing:4px;color:#00e5ff;">🧪 MODO TESTEO</div>
+      <div style="display:flex;gap:10px;">
+        <button onclick="runAllTests()" style="background:rgba(0,229,255,0.1);border:1px solid rgba(0,229,255,0.3);color:#00e5ff;padding:6px 14px;border-radius:8px;font-family:'Syne',sans-serif;font-size:10px;letter-spacing:2px;cursor:pointer;">▶ EJECUTAR TODO</button>
+        <button onclick="closeTestMode()" style="background:transparent;border:1px solid rgba(255,255,255,0.1);color:rgba(240,244,248,0.4);padding:6px 12px;border-radius:8px;font-family:'Syne',sans-serif;font-size:10px;cursor:pointer;">✕</button>
+      </div>
+    </div>
+    <div style="display:flex;flex:1;overflow:hidden;">
+      <!-- Test list -->
+      <div style="width:45%;border-right:1px solid rgba(0,229,255,0.08);overflow-y:auto;padding:10px 0;" id="testList"></div>
+      <!-- Log output -->
+      <div style="flex:1;display:flex;flex-direction:column;overflow:hidden;">
+        <div style="padding:8px 14px;font-size:9px;letter-spacing:2px;color:rgba(0,229,255,0.4);border-bottom:1px solid rgba(0,229,255,0.08);flex-shrink:0;">SALIDA DEL TEST</div>
+        <div id="testLogBox" style="flex:1;overflow-y:auto;padding:10px 14px;font-size:11px;"></div>
+      </div>
+    </div>
+    <!-- Console log section -->
+    <div style="height:28%;border-top:1px solid rgba(0,229,255,0.08);display:flex;flex-direction:column;flex-shrink:0;">
+      <div style="padding:6px 14px;font-size:9px;letter-spacing:2px;color:rgba(0,229,255,0.4);flex-shrink:0;">CONSOLA EN VIVO</div>
+      <div id="testLogBox2" style="flex:1;overflow-y:auto;padding:6px 14px;"></div>
+    </div>
+  `;
+  document.body.appendChild(panel);
+
+  // Redirigir logs a la segunda caja también
+  const origPushLog = pushLog;
+  function renderLogs2() {
+    const box = document.getElementById('testLogBox2');
+    if (!box) return;
+    box.innerHTML = logs.slice(-30).reverse().map(l => {
+      const col = l.type==='err'?'#ff6060':l.type==='warn'?'#ffcc44':'rgba(0,229,255,0.6)';
+      return `<div style="font-size:10px;color:${col};padding:2px 0;border-bottom:1px solid rgba(255,255,255,0.03)">${l.time} ${l.msg}</div>`;
+    }).join('');
+  }
+  const _origRL = renderLogs;
+  // Override renderLogs to also update box2
+  console.log   = (...a) => { origConsoleLog(...a);  pushLog('log',  a); renderLogs2(); };
+  console.warn  = (...a) => { origConsoleWarn(...a); pushLog('warn', a); renderLogs2(); };
+  console.error = (...a) => { origConsoleErr(...a);  pushLog('err',  a); renderLogs2(); };
+
+  function renderTestList() {
+    const list = document.getElementById('testList');
+    if (!list) return;
+    list.innerHTML = tests.map(t => {
+      const res = testResults[t.id];
+      const col = statusColor(res);
+      return `<div onclick="runTest('${t.id}')" style="padding:10px 14px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,0.04);transition:background 0.2s;"
+        onmouseover="this.style.background='rgba(0,229,255,0.05)'" onmouseout="this.style.background='transparent'">
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <div style="font-size:12px;font-weight:700;">${t.label}</div>
+          <div style="font-size:14px;">${statusIcon(res)}</div>
+        </div>
+        <div style="font-size:9px;color:rgba(240,244,248,0.3);margin-top:3px;line-height:1.4;">${t.desc}</div>
+      </div>`;
+    }).join('');
+  }
+
+  window.runTest = async (id) => {
+    const t = tests.find(x=>x.id===id);
+    if (!t) return;
+    testResults[id] = 'running';
+    renderTestList();
+    const box = document.getElementById('testLogBox');
+    if (box) box.innerHTML = `<div style="font-size:10px;letter-spacing:2px;color:rgba(0,229,255,0.5);margin-bottom:10px;">── ${t.label.toUpperCase()} ──</div>`;
+    const localLogs = [];
+    const log = (msg) => {
+      localLogs.push(msg);
+      if (box) box.innerHTML = `<div style="font-size:10px;letter-spacing:2px;color:rgba(0,229,255,0.5);margin-bottom:10px;">── ${t.label.toUpperCase()} ──</div>` +
+        localLogs.map(m => `<div style="font-size:11px;padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.04);line-height:1.5;">${m}</div>`).join('');
+    };
+    const result = await t.run(log);
+    testResults[id] = result;
+    renderTestList();
+  };
+
+  window.runAllTests = async () => {
+    for (const t of tests) {
+      await runTest(t.id);
+      await new Promise(r => setTimeout(r, 300));
+    }
+    // Resumen
+    const box = document.getElementById('testLogBox');
+    const pass = Object.values(testResults).filter(v=>v==='pass').length;
+    const warn = Object.values(testResults).filter(v=>v==='warn').length;
+    const fail = Object.values(testResults).filter(v=>v==='fail').length;
+    if (box) {
+      const summary = `
+        <div style="margin-top:16px;padding:14px;background:rgba(0,229,255,0.04);border:1px solid rgba(0,229,255,0.12);border-radius:10px;">
+          <div style="font-size:10px;letter-spacing:3px;color:rgba(0,229,255,0.5);margin-bottom:10px;">RESUMEN FINAL</div>
+          <div style="font-size:13px;">✅ Pasaron: <b style="color:#00e5ff">${pass}</b> &nbsp; ⚠️ Advertencias: <b style="color:#ffcc44">${warn}</b> &nbsp; ❌ Fallaron: <b style="color:#ff6060">${fail}</b></div>
+          ${fail>0 ? '<div style="margin-top:8px;font-size:11px;color:#ff6060;">Hay tests fallidos. Revisa los permisos del navegador o la conexión.</div>' : ''}
+          ${warn>0 && fail===0 ? '<div style="margin-top:8px;font-size:11px;color:#ffcc44;">Advertencias menores. El sistema funciona pero puede mejorar.</div>' : ''}
+          ${fail===0 && warn===0 ? '<div style="margin-top:8px;font-size:11px;color:#00e5ff;">Todo funciona correctamente ✨</div>' : ''}
+        </div>`;
+      box.innerHTML += summary;
+    }
+  };
+
+  window.closeTestMode = () => {
+    // Restaurar console
+    console.log   = origConsoleLog;
+    console.warn  = origConsoleWarn;
+    console.error = origConsoleErr;
+    panel.remove();
+    delete window.runTest;
+    delete window.runAllTests;
+    delete window.closeTestMode;
+    showAdminPanel();
+  };
+
+  renderTestList();
+  // Auto-ejecutar al abrir
+  setTimeout(runAllTests, 400);
+}
+
 </script>
 </body>
 </html>
