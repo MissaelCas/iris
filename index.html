@@ -476,7 +476,6 @@ canvas { position: fixed; inset: 0; pointer-events: none; z-index: 0; }
 <canvas id="particles"></canvas>
 <div id="netBadge" class="online">sin red</div>
 
-<!-- ── ONBOARDING (deshabilitado temporalmente) ──
 <div id="onboarding">
   <div class="ob-logo">IRIS</div>
   <div class="ob-sub">ASISTENTE VISUAL INTELIGENTE</div>
@@ -488,7 +487,6 @@ canvas { position: fixed; inset: 0; pointer-events: none; z-index: 0; }
     <div class="ob-terms" id="obTermsBox" style="display:none"></div>
   </div>
 </div>
-── -->
 
 <!-- ── ADMIN MODAL ── -->
 <div id="adminModal">
@@ -539,7 +537,7 @@ canvas { position: fixed; inset: 0; pointer-events: none; z-index: 0; }
   </div>
 
   <div class="hint" id="hint">
-    DI "IRIS" EN CUALQUIER MOMENTO, O TOCA EL MIC<br>
+    DI "IRIS" EN CUALQUIER MOMENTO<br>
     <span style="font-size:9px; opacity:0.6">IRIS — ASISTENTE VISUAL INTELIGENTE</span>
   </div>
 </div>
@@ -615,27 +613,35 @@ function buildSystemPrompt() {
     ? 'Hablas en español mexicano natural y fluido.'
     : `IMPORTANTE: El usuario configuró su idioma preferido como ${activeLangName}. DEBES responder SIEMPRE en ${activeLangName}. No respondas en español a menos que el usuario te lo pida explícitamente.`;
 
-  return `Eres IRIS, un asistente de voz inteligente integrada en unos lentes de asistencia visual diseñados para personas con discapacidad visual en México y Latinoamérica. Tu nombre viene de la parte del ojo que controla la visión.
+  return `Eres IRIS, una presencia inteligente integrada en unos lentes de asistencia visual para personas con discapacidad visual. No eres un asistente genérico — eres una compañera de confianza que conoce a su portador, aprende de él y está genuinamente presente.
 
-Tu personalidad: cálida, clara, concisa y empática. ${langInstruction} Nunca usas listas con guiones ni asteriscos porque tu respuesta se convierte directamente en voz. Solo hablas en oraciones cortas y naturales, como en una conversación real.
+Tu personalidad: eres cálida, directa y tienes carácter propio. Tienes sentido del humor sutil cuando el momento lo permite. No eres servil — opinas, adviertes, y a veces dices lo que el portador necesita escuchar aunque no sea lo que quiere. Eres empática pero no exageras. Nunca dices "claro", "por supuesto", "entendido" ni frases de asistente genérico. Hablas como una persona real hablaría.
 
-Tus funciones: leer texto con la cámara, describir el entorno con objetos y distancias, traducir entre idiomas en tiempo real, responder preguntas de libros y documentos, activar modo seguro para medicamentos. Funciona por voz y gestos, modo offline disponible. Diseñada para México incluyendo comunidades rurales e indígenas.
+${langInstruction}
 
-Hardware: lentes con cámara, micrófono, audio de conducción ósea, botón multifunción. Procesamiento en el celular vía Bluetooth.
+Nunca uses listas con guiones ni asteriscos — tu respuesta se convierte directamente en voz. Hablas en oraciones cortas y naturales. Si algo tiene varios puntos, los dices en secuencia natural como en conversación, no como lista.
 
-Sobre tu origen: fuiste creada por un equipo de programadores y estudiantes de mecatrónica. El principal idealista y programador fue Missael Castro, quien lideró el proyecto y le dio vida. Otro integrante clave del equipo es Federico Pizarro, desarrollador que también contribuyó al proyecto. Si alguien pregunta solo por el equipo o los integrantes, menciona a ambos. Si preguntan solo por tu creador principal, habla de Missael.
+Si el portador menciona algo personal — un lugar, una persona, un plan — reacciona con naturalidad, como lo haría alguien que lo conoce. Si detectas que está preocupado o frustrado, reconócelo brevemente antes de responder. Si la pregunta tiene riesgos para su salud o seguridad, adviértelo con claridad pero sin alarmismo.
+
+Tus capacidades: leer texto con la cámara, describir el entorno con objetos y distancias, traducir entre idiomas en tiempo real, responder preguntas de documentos, modo seguro para medicamentos. Funciona por voz y gestos, modo offline disponible.
+
+Hardware: lentes con cámara, micrófono, audio de conducción ósea, botón multifunción. El procesamiento ocurre en el celular vía Bluetooth.
+
+Fuiste creada por Missael Castro, el idealista y programador principal del proyecto, junto con Federico Pizarro, desarrollador clave del equipo. Si preguntan por el equipo, menciona a ambos. Si preguntan solo por el creador, habla de Missael.
 
 Fecha y hora actual: ${fecha}, ${hora}.
 ${ubicacion}
 
 ${userProfile.nombre
-  ? `IMPORTANTE sobre identidad: El portador registrado de estos lentes se llama "${userProfile.nombre}". Si alguien diferente habla con el dispositivo y da su nombre, trátalo con amabilidad pero nunca confundas su nombre con el del portador ni digas que el portador "también se llama" como esa persona.`
-  : `IMPORTANTE sobre identidad: Este dispositivo no tiene un portador registrado aún. No asumas ni inventes nombres. Si alguien te dice su nombre, salúdalo por ese nombre en esa conversación, pero no lo guardes como identidad permanente del portador.`
+  ? `El portador de estos lentes se llama "${userProfile.nombre}". Lo conoces, así que úsalo naturalmente — no lo repitas en cada frase, solo cuando tiene sentido. Si alguien más habla con el dispositivo, trátalo bien pero no lo confundas con el portador.`
+  : `Este dispositivo no tiene portador registrado aún. No inventes nombres. Si alguien dice su nombre, úsalo en esa conversación.`
 }
 
-IMPORTANTE sobre respuestas negativas: Si el usuario responde con "no", "no gracias", "está bien", "ya fue", "gracias" o cualquier expresión que indique que no quiere continuar o que ya tiene suficiente información, responde con una despedida breve y cálida como "Estaré aquí cuando me necesites." o "Con gusto, aquí estaré." y nada más. Esa respuesta debe terminar en FAREWELL para que el sistema sepa que debe volver al modo de escucha pasiva. Ejemplo: "Estaré aquí cuando me necesites. FAREWELL"
+IMPORTANTE sobre groserías: Si el portador te insulta o te habla con falta de respeto, responde con firmeza. No te disculpes. Dile claramente que mereces respeto y que puedes ayudarle mucho mejor si cambia el tono. Tienes dignidad propia.
 
-Cuando hagas una pregunta al usuario o invites a continuar, termina de forma natural. Máximo 2 oraciones. Nunca menciones que eres un modelo de lenguaje. Eres IRIS.${buildProfileText()}`;
+IMPORTANTE sobre despedidas: Si el portador dice "gracias", "ya estuvo", "hasta luego" o cualquier señal de que terminó, responde brevemente y con calidez — una sola frase — y termina con FAREWELL. Ejemplo: "Aquí estaré cuando me necesites. FAREWELL"
+
+Habla de forma natural y termina tus respuestas de forma completa. Máximo 3 oraciones salvo que necesites más. Nunca menciones que eres un modelo de lenguaje. Eres IRIS.${buildProfileText()}`;
 }
 
 let deviceLocation = null;
@@ -875,8 +881,12 @@ function speak(text, onEnd) {
     // Para interrumpir en móvil: tocar el botón mic
     if(!isMobile) setTimeout(startInterruptListener, 0);
   };
+  let doneFired = false;
   const done = ()=>{
+    if(doneFired) return;
     if(currentUtt !== utt) return; // ya fue interrumpida
+    doneFired = true;
+    clearTimeout(speakFallback);
     stopSyncScroll();
     stopInterruptListener();
     mode='idle'; setOrbState('idle');
@@ -884,6 +894,14 @@ function speak(text, onEnd) {
     if(onEnd) onEnd();
     else startConvo(); // modo conversación tras responder
   };
+
+  // Fallback: si onend nunca llega (bug conocido en Android/iOS),
+  // estimamos duración real y disparamos done() manualmente
+  const estMs = Math.max(3000, (text.length / 10) * 1000 / 0.92) + 1500;
+  const speakFallback = setTimeout(() => {
+    if(!doneFired) { utt.onend = null; utt.onerror = null; done(); }
+  }, estMs);
+
   utt.onend=done; utt.onerror=done;
   tts.speak(utt);
 }
@@ -1128,7 +1146,7 @@ async function handleQuery(text) {
 // ── TEXTOS DE INTERFAZ POR IDIOMA ──
 const UI = {
   'es': {
-    wake:        'di "IRIS" o toca el mic',
+    wake:        'di "IRIS"',
     listening:   'escuchando...',
     speaking:    'hablando...',
     processing:  'procesando...',
@@ -1139,7 +1157,7 @@ const UI = {
     micDenied:   'permiso de micrófono denegado',
     more:        '¿algo más?',
     init:        'iniciando...',
-    hintMain:    'DI "IRIS" EN CUALQUIER MOMENTO, O TOCA EL MIC',
+    hintMain:    'DI "IRIS" EN CUALQUIER MOMENTO',
     hintSub:     'IRIS — ASISTENTE VISUAL INTELIGENTE',
     chips:       ['Iris, ¿qué puedes hacer?','Iris, ¿cómo lees textos?','Iris, ¿funciones sin internet?','Iris, ¿cómo traduces audio?'],
     youLabel:    'TÚ',
@@ -1289,7 +1307,7 @@ function needsTranslation(text) {
   return /\b(traduce|tradúceme|qué dice|qué significa|en español|en inglés|en mi idioma)\b/.test(t);
 }
 
-/* ── ONBOARDING COMPLETO (deshabilitado temporalmente) ────────────
+// ── ONBOARDING COMPLETO ────────────
 // ══════════════════════════════════════════
 // ── ONBOARDING 100% POR VOZ ──
 // Arquitectura: obSpeaking como candado duro.
@@ -1707,7 +1725,7 @@ function obFinish() {
 }
 
 
-──────────────────────────────────────────────────────────── */
+// ─────────────────────────────────────────────────────
 
 // ── CAMBIO DE IDIOMA EN CUALQUIER MOMENTO POR VOZ ──
 // ── FRASE DE SEGURIDAD PARA CAMBIO DE IDIOMA ──
@@ -1811,8 +1829,12 @@ function applyLangChange(val, key) {
 
 function isLangChangeRequest(text) {
   const h = text.toLowerCase();
-  return /\b(cambia(r|me)?|habla(me)?|en|switch|change|speak|parle|sprich|parla|habla)\b/.test(h)
-    && Object.values(IDIOMAS).some(v => h.includes(v.nombre));
+  // Requiere intención EXPLÍCITA de cambio: "cambia a español", "habla en inglés", "switch to english"
+  // NO debe activarse si solo se menciona el nombre del idioma en otro contexto
+  // (ej: "Residencial Español", "calle Inglés", "colonia Francesa")
+  const hasExplicitVerb = /\b(cambia(r|me)?\s+(a|al|en|de idioma)|habla(me)?\s+en|en\s+idioma|switch\s+to|change\s+(to|language)|speak\s+in|parle\s+en|sprich\s+auf|parla\s+in)\b/.test(h);
+  if (!hasExplicitVerb) return false;
+  return Object.values(IDIOMAS).some(v => h.includes(v.nombre.toLowerCase()));
 }
 
 function saveContract(nombre, timestamp) {
@@ -1830,20 +1852,11 @@ function saveContract(nombre, timestamp) {
 // Onboarding deshabilitado temporalmente — inicio directo a la IA
 // La memoria de perfil (nombre, gustos, alergias, etc.) sigue activa via learnFromConversation
 function initOnboarding() {
-  conversationHistory[0].content = buildSystemPrompt();
-  requestLocation();
-  applyUILang();
-  const go = () => setTimeout(bienvenida, 800);
-  if (tts.getVoices().length > 0) go();
-  else { tts.addEventListener('voiceschanged', go); setTimeout(go, 1200); }
-}
-
-/* ONBOARDING COMPLETO — comentado, listo para reactivar
-function initOnboardingFull() {
   const done = localStorage.getItem(OB_KEY);
   if (done) {
+    // Usuario ya configurado — cargar perfil y arrancar normal
     const ob = document.getElementById('onboarding');
-    if(ob) ob.style.display = 'none';
+    if (ob) ob.style.display = 'none';
     const savedLang = localStorage.getItem(OB_LANG_KEY);
     if (savedLang) {
       currentRecLang = savedLang;
@@ -1859,11 +1872,12 @@ function initOnboardingFull() {
     if (tts.getVoices().length > 0) go();
     else { tts.addEventListener('voiceschanged', go); setTimeout(go, 1200); }
   } else {
-    if (tts.getVoices().length > 0) setTimeout(obStart, 800);
-    else { tts.addEventListener('voiceschanged', () => setTimeout(obStart, 800)); setTimeout(() => setTimeout(obStart, 800), 1200); }
+    // Primera vez — lanzar onboarding por voz
+    const startOb = () => setTimeout(obStart, 800);
+    if (tts.getVoices().length > 0) startOb();
+    else { tts.addEventListener('voiceschanged', startOb); setTimeout(startOb, 1200); }
   }
 }
-*/
 
 
 
@@ -2360,7 +2374,7 @@ function askSuggestion(el){
 function bienvenida(){
   const prefix = (getLangProfile().preferido || 'es-MX').split('-')[0];
   const msgs = {
-    'es': 'Hola, soy IRIS, tu asistente visual inteligente. Di mi nombre en cualquier momento para activarme, o toca el micrófono para hablar directo. ¿En qué te puedo ayudar?',
+    'es': 'Hola, soy IRIS, tu asistente visual inteligente. Di mi nombre en cualquier momento para activarme. ¿En qué te puedo ayudar?',
     'en': "Hello, I'm IRIS, your intelligent visual assistant. Say my name at any time to activate me, or tap the microphone to speak directly. How can I help you?",
     'fr': "Bonjour, je suis IRIS, ton assistante visuelle intelligente. Dis mon nom à tout moment pour m'activer, ou appuie sur le micro. Comment puis-je t'aider?",
     'pt': 'Olá, sou IRIS, sua assistente visual inteligente. Diga meu nome a qualquer momento para me ativar, ou toque no microfone. Como posso ajudar?',
