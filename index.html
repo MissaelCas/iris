@@ -1271,9 +1271,18 @@ function obSetUI(icon, question, hint, showTerms=false) {
   document.getElementById('obTermsBox').style.display = showTerms ? 'block' : 'none';
 }
 
+// ── ONBOARDING: estado global para evitar que el mic abra mientras IRIS habla ──
+let obSpeaking = false; // true mientras el TTS de onboarding está activo
+
 // Hablar durante el onboarding (sin modo wake, sin historial)
 function obSpeak(text, lang, onEnd) {
   tts.cancel();
+  obSpeaking = true;
+
+  // Actualizar UI para que se vea que IRIS está hablando, no escuchando
+  const hintEl = document.getElementById('obHint');
+  if (hintEl) hintEl.textContent = '🔊 HABLANDO...';
+
   const utt = new SpeechSynthesisUtterance(text);
   utt.lang = lang || 'es-MX';
   utt.rate = 0.88; utt.pitch = 1.05; utt.volume = 1;
@@ -1286,81 +1295,88 @@ function obSpeak(text, lang, onEnd) {
 
   const isMob = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
-  // En móvil el evento onend llega antes de que el audio termine físicamente.
-  // Estimamos la duración real y esperamos ese tiempo antes de abrir el mic.
+  // Calcular tiempo estimado de la frase (chars / velocidad) + margen generoso
+  // En móvil usamos 10 chars/s a rate 0.88, con +1200ms de margen extra
+  const estMs = isMob
+    ? Math.max(1500, (text.length / 10) * 1000 / 0.88) + 1200
+    : Math.max(400, (text.length / 13) * 1000 / 0.88) + 300;
+
+  let endFired = false;
   const fireEnd = () => {
-    if (!onEnd) return;
-    if (isMob) {
-      // ~11 chars/segundo a rate 0.88 — más margen para frases largas
-      const estMs = Math.max(600, (text.length / 11) * 1000 / 0.88) + 600;
-      setTimeout(onEnd, estMs);
-    } else {
-      setTimeout(onEnd, 200);
-    }
+    if (endFired) return;
+    endFired = true;
+    obSpeaking = false;
+    // Añadir delay adicional DESPUÉS de que el audio termina antes de abrir mic
+    const postDelay = isMob ? 800 : 150;
+    setTimeout(() => { if (onEnd) onEnd(); }, postDelay);
   };
 
-  utt.onend   = fireEnd;
-  utt.onerror = fireEnd;
-  tts.speak(utt);
+  // Fallback por tiempo: si onend no llega (bug Android), disparar manualmente
+  const fallbackTimer = setTimeout(() => {
+    utt.onend = null; utt.onerror = null;
+    fireEnd();
+  }, estMs + 500);
 
-  // Fallback: si el TTS nunca dispara onend (bug conocido en algunos Android)
-  // llamamos fireEnd después del tiempo estimado + margen
-  if (isMob) {
-    const safeMs = Math.max(3000, (text.length / 11) * 1000 / 0.88) + 2000;
-    const fallback = setTimeout(() => {
-      utt.onend = null; utt.onerror = null;
-      fireEnd();
-    }, safeMs);
-    utt.onend = () => { clearTimeout(fallback); fireEnd(); };
-    utt.onerror = () => { clearTimeout(fallback); fireEnd(); };
-  }
+  utt.onend = () => { clearTimeout(fallbackTimer); fireEnd(); };
+  utt.onerror = () => { clearTimeout(fallbackTimer); fireEnd(); };
+
+  tts.speak(utt);
 }
 
 // Escuchar una respuesta del usuario durante onboarding
 function obListen(lang, onResult, onEmpty) {
+  // NUNCA abrir el mic si IRIS todavía está hablando
+  if (obSpeaking) {
+    setTimeout(() => obListen(lang, onResult, onEmpty), 300);
+    return;
+  }
+
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SR) { if(onEmpty) onEmpty(); return; }
 
-  // En móvil hay que esperar que el TTS termine de verdad antes de abrir el mic.
-  // Sin este delay, el mic capta la voz de IRIS como respuesta del usuario.
-  const MOBILE_DELAY = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ? 900 : 200;
+  const isMob = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  // Delay adicional antes de abrir el mic (el audio del sistema tarda en liberar)
+  const startDelay = isMob ? 600 : 100;
 
   setTimeout(() => {
+    // Doble check: si volvió a hablar mientras esperábamos, reintentar
+    if (obSpeaking) { setTimeout(() => obListen(lang, onResult, onEmpty), 300); return; }
+
     const r = new SR();
     r.lang = lang || 'es-MX';
     r.continuous = false;
     r.interimResults = false;
     r.maxAlternatives = 3;
 
-    document.getElementById('obHint').textContent = '🎙 ESCUCHANDO...';
+    const hintEl = document.getElementById('obHint');
+    if (hintEl) hintEl.textContent = '🎙 ESCUCHANDO...';
 
     let heard = '';
-    let fired = false; // evitar que onresult y onend llamen al callback dos veces
+    let fired = false;
 
     const done = (result) => {
       if (fired) return;
       fired = true;
       clearTimeout(timer);
       try { r.abort(); } catch(e) {}
-      if (result) {
-        onResult && onResult(result);
+      if (result && result.trim().length > 0) {
+        onResult && onResult(result.trim());
       } else {
         onEmpty && onEmpty();
       }
     };
 
-    // Timeout de seguridad: si no habla en 10s pasa al siguiente paso
-    const timer = setTimeout(() => done(null), 10000);
+    // Timeout de seguridad: 12s sin respuesta → siguiente paso
+    const timer = setTimeout(() => done(null), 12000);
 
     r.onresult = e => {
-      // Esperar resultado final para evitar parciales en móvil
       const finalResult = Array.from(e.results).find(r => r.isFinal);
       if (!finalResult) return;
       const text = finalResult[0].transcript.trim();
       if (text.length > 0) {
         heard = text;
         // Pequeño delay para que el reconocedor cierre limpio en móvil
-        setTimeout(() => done(heard), 300);
+        setTimeout(() => done(heard), isMob ? 400 : 150);
       }
     };
 
@@ -1369,15 +1385,13 @@ function obListen(lang, onResult, onEmpty) {
     };
 
     r.onerror = (e) => {
-      // 'no-speech' es normal — no es error real
       if (e.error === 'no-speech') { done(null); return; }
-      // 'aborted' lo provocamos nosotros — ignorar
       if (e.error === 'aborted') return;
       done(null);
     };
 
     try { r.start(); } catch(e) { done(null); }
-  }, MOBILE_DELAY);
+  }, startDelay);
 }
 
 // ── FLUJO DE ONBOARDING POR VOZ ──
@@ -1392,55 +1406,70 @@ function obStart() {
   obData.lang = deviceLang.code;
   currentRecLang = deviceLang.code;
 
-  const msgs = {
-    'es': `Hola, soy IRIS, tu asistente visual inteligente. Voy a hacerte unas preguntas rápidas para configurarme. ¿Cómo te llamas?`,
-    'en': `Hello, I'm IRIS, your visual assistant. I'll ask you a few quick questions to set up. What's your name?`,
-    'fr': `Bonjour, je suis IRIS, ton assistante visuelle. Je vais te poser quelques questions. Comment tu t'appelles?`,
-    'pt': `Olá, sou IRIS, sua assistente visual. Vou fazer algumas perguntas rápidas. Como você se chama?`,
-    'de': `Hallo, ich bin IRIS, deine visuelle Assistentin. Ich stelle dir ein paar Fragen. Wie heißt du?`,
+  obSetUI('👋', 'Iniciando...', 'UN MOMENTO...');
+
+  // Presentación sin preguntar nada — luego pregunta nombre por separado
+  const introMsgs = {
+    'es': `Hola, soy IRIS, tu asistente visual inteligente. Voy a hacerte unas preguntas rápidas para configurarme.`,
+    'en': `Hello, I'm IRIS, your visual assistant. I'll ask you a few quick questions to set up.`,
+    'fr': `Bonjour, je suis IRIS, ton assistante visuelle. Je vais te poser quelques questions rapides.`,
+    'pt': `Olá, sou IRIS, sua assistente visual. Vou fazer algumas perguntas rápidas.`,
+    'de': `Hallo, ich bin IRIS, deine visuelle Assistentin. Ich stelle dir ein paar kurze Fragen.`,
   };
-
-  const msg = msgs[deviceLang.code.split('-')[0]] || msgs['es'];
-
-  obSetUI('👋', 'Detectando idioma...', 'UN MOMENTO...');
+  const introMsg = introMsgs[deviceLang.code.split('-')[0]] || introMsgs['es'];
 
   setTimeout(() => {
-    obSetUI('👋', '¿Cómo te llamas?', 'DI TU NOMBRE EN VOZ ALTA');
-    obSpeak(msg, deviceLang.code, () => obStepNombre(deviceLang));
-  }, 600);
+    obSpeak(introMsg, deviceLang.code, () => {
+      // Solo después de que terminó la intro, preguntar el nombre
+      obStepNombre(deviceLang);
+    });
+  }, 400);
 }
 
 // Palabras que IRIS usa en su presentación — si el "nombre" las contiene, es eco del TTS
-const OB_IRIS_WORDS = ['hola','soy','iris','asistente','visual','inteligente','preguntas','rápidas','configurarme','llamas','hello','what','your','name','visual','assistant'];
+const OB_IRIS_WORDS = ['hola','soy','iris','asistente','visual','inteligente','preguntas','rápidas','configurarme','llamas','hello','what','your','name','assistant','questions','quick','setup','bonjour','assistante','visuelle','olá','assistente','hallo','assistentin','fragen'];
 
 function obStepNombre(deviceLang) {
-  obSetUI('👤', '¿Cómo te llamas?', '🎙 HABLA AHORA');
-  obListen(deviceLang.code, (heard) => {
-    if (!heard || heard.length < 2) {
-      obSpeak('No pude escuchar tu nombre. ¿Me lo puedes repetir?', deviceLang.code,
-        () => obStepNombre(deviceLang));
-      return;
-    }
-    // Detectar si lo que "escuchó" es eco de la voz de IRIS (problema en móvil)
-    const heardLow = heard.toLowerCase();
-    const wordsInHeard = heardLow.split(' ');
-    const ecoCount = wordsInHeard.filter(w => OB_IRIS_WORDS.includes(w)).length;
-    const isEco = ecoCount >= 2 || heardLow.includes('iris') || heardLow.includes('asistente');
-    if (isEco) {
-      // Era eco — reintentar silenciosamente
-      obStepNombre(deviceLang);
-      return;
-    }
-    // Nombre muy largo (más de 4 palabras) = probablemente eco
-    if (wordsInHeard.length > 4) {
-      obSpeak('No pude escuchar bien tu nombre. Di solo tu nombre.', deviceLang.code,
-        () => obStepNombre(deviceLang));
-      return;
-    }
-    obData.nombre = heard.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
-    userProfile.nombre = obData.nombre;
-    obStepIdiomaConfirmar(deviceLang);
-  }, () => obStepNombre(deviceLang));
+  obSetUI('👤', '¿Cómo te llamas?', '🔊 HABLANDO...');
+  const nameMsgs = {
+    'es': '¿Cómo te llamas?',
+    'en': "What's your name?",
+    'fr': "Comment tu t'appelles?",
+    'pt': 'Como você se chama?',
+    'de': 'Wie heißt du?',
+  };
+  const nameQ = nameMsgs[deviceLang.code.split('-')[0]] || nameMsgs['es'];
+  // Primero hablar la pregunta, LUEGO escuchar
+  obSpeak(nameQ, deviceLang.code, () => {
+    obSetUI('👤', '¿Cómo te llamas?', '🎙 HABLA AHORA');
+    obListen(deviceLang.code, (heard) => {
+      if (!heard || heard.length < 2) {
+        const retry = { 'es':'No pude escuchar tu nombre. ¿Me lo repites?', 'en':"I couldn't hear your name. Can you repeat it?" };
+        obSpeak(retry[deviceLang.code.split('-')[0]] || retry['es'], deviceLang.code,
+          () => obStepNombre(deviceLang));
+        return;
+      }
+      // Detectar eco de la voz de IRIS
+      const heardLow = heard.toLowerCase();
+      const wordsInHeard = heardLow.split(' ');
+      const ecoCount = wordsInHeard.filter(w => OB_IRIS_WORDS.includes(w)).length;
+      const isEco = ecoCount >= 2 || heardLow.includes('iris') || heardLow.includes('asistente') || heardLow.includes('assistant');
+      if (isEco) {
+        obStepNombre(deviceLang);
+        return;
+      }
+      // Nombre muy largo (más de 4 palabras) = probablemente eco o ruido
+      if (wordsInHeard.length > 4) {
+        const retry2 = { 'es':'No pude escuchar bien tu nombre. Di solo tu nombre.', 'en':"I couldn't hear your name clearly. Say just your name." };
+        obSpeak(retry2[deviceLang.code.split('-')[0]] || retry2['es'], deviceLang.code,
+          () => obStepNombre(deviceLang));
+        return;
+      }
+      obData.nombre = heard.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+      userProfile.nombre = obData.nombre;
+      obStepIdiomaConfirmar(deviceLang);
+    }, () => obStepNombre(deviceLang));
+  });
 }
 
 function obStepIdiomaConfirmar(deviceLang) {
