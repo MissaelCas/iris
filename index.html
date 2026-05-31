@@ -476,6 +476,22 @@ canvas { position: fixed; inset: 0; pointer-events: none; z-index: 0; }
 <canvas id="particles"></canvas>
 <div id="netBadge" class="online">sin red</div>
 
+<!-- ── PANTALLA DE INICIO (desbloquea audio en WebView/APK) ── -->
+<div id="tapScreen" style="
+  position:fixed;inset:0;z-index:500;background:#05060a;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  cursor:pointer;-webkit-tap-highlight-color:transparent;">
+  <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:clamp(42px,10vw,60px);
+    letter-spacing:12px;color:#00e5ff;text-shadow:0 0 40px rgba(0,229,255,0.6);
+    animation:ob-glow 3s ease-in-out infinite;">IRIS</div>
+  <div style="font-size:10px;letter-spacing:4px;color:rgba(240,244,248,0.3);margin-top:8px;">
+    ASISTENTE VISUAL INTELIGENTE</div>
+  <div style="margin-top:60px;font-size:13px;letter-spacing:3px;color:rgba(0,229,255,0.7);
+    animation:ob-glow 2s ease-in-out infinite;">TOCA PARA INICIAR</div>
+  <div style="margin-top:16px;font-size:10px;letter-spacing:2px;color:rgba(240,244,248,0.2);">
+    TAP TO START</div>
+</div>
+
 <!-- ── ONBOARDING ── -->
 <div id="onboarding">
   <div class="ob-logo">IRIS</div>
@@ -2297,8 +2313,19 @@ window.addEventListener('load', ()=>{
   statusText.textContent=getUI('init');
   setOrbState('idle');
   conversationHistory[0].content = buildSystemPrompt();
-  requestLocation();
-  initOnboarding();
+
+  const tapScreen = document.getElementById('tapScreen');
+
+  function afterTap() {
+    // Desbloquear AudioContext con gesto real (necesario en WebView)
+    try { ensureAudio(); } catch(e){}
+    tapScreen.style.display = 'none';
+    requestLocation();
+    initOnboarding();
+  }
+
+  tapScreen.addEventListener('click', afterTap, { once: true });
+  tapScreen.addEventListener('touchend', afterTap, { once: true, passive: true });
 });
 </script>
 </body>
