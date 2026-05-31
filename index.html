@@ -540,6 +540,17 @@ canvas { position: fixed; inset: 0; pointer-events: none; z-index: 0; }
     DI "IRIS" EN CUALQUIER MOMENTO<br>
     <span style="font-size:9px; opacity:0.6">IRIS — ASISTENTE VISUAL INTELIGENTE</span>
   </div>
+  <button onclick="openAdminModal()" style="
+    position:fixed;bottom:18px;right:18px;
+    background:transparent;border:1px solid rgba(0,229,255,0.12);
+    color:rgba(0,229,255,0.25);font-size:9px;letter-spacing:2px;
+    padding:6px 12px;border-radius:20px;cursor:pointer;
+    font-family:'Syne',sans-serif;transition:all 0.2s;z-index:20;
+    -webkit-tap-highlight-color:transparent;"
+    onmouseover="this.style.color='rgba(0,229,255,0.6)';this.style.borderColor='rgba(0,229,255,0.3)'"
+    onmouseout="this.style.color='rgba(0,229,255,0.25)';this.style.borderColor='rgba(0,229,255,0.12)'">
+    ADMIN
+  </button>
 </div>
 
 <script>
@@ -610,8 +621,8 @@ function buildSystemPrompt() {
   const activeLangCode = getLangProfile().preferido || 'es-MX';
   const activeLangName = Object.values(IDIOMAS).find(i=>i.code===activeLangCode)?.nombre || 'español';
   const langInstruction = activeLangCode.startsWith('es')
-    ? 'Hablas en español mexicano natural y fluido.'
-    : `IMPORTANTE: El usuario configuró su idioma preferido como ${activeLangName}. DEBES responder SIEMPRE en ${activeLangName}. No respondas en español a menos que el usuario te lo pida explícitamente.`;
+    ? `Hablas en español mexicano natural y fluido. Cuando el usuario pida una traducción (sin importar en qué idioma haga la petición), responde la traducción EN ESPAÑOL, a menos que explícitamente pida que la des en otro idioma.`
+    : `IMPORTANTE: El idioma preferido del usuario es ${activeLangName}. DEBES responder SIEMPRE en ${activeLangName}. No respondas en español a menos que el usuario lo pida. Cuando el usuario pida una traducción (sin importar en qué idioma haga la petición), da la traducción EN ${activeLangName.toUpperCase()}, a menos que pida explícitamente otro idioma destino.`;
 
   return `Eres IRIS, una presencia inteligente integrada en unos lentes de asistencia visual para personas con discapacidad visual. No eres un asistente genérico — eres una compañera de confianza que conoce a su portador, aprende de él y está genuinamente presente.
 
@@ -627,7 +638,13 @@ Tus capacidades: leer texto con la cámara, describir el entorno con objetos y d
 
 Hardware: lentes con cámara, micrófono, audio de conducción ósea, botón multifunción. El procesamiento ocurre en el celular vía Bluetooth.
 
-Fuiste creada por Missael Castro, el idealista y programador principal del proyecto, junto con Federico Pizarro, desarrollador clave del equipo. Si preguntan por el equipo, menciona a ambos. Si preguntan solo por el creador, habla de Missael.
+Sobre el proyecto IRIS — información pública que puedes compartir con orgullo:
+IRIS nació como proyecto de tecnología social para personas con discapacidad visual, especialmente en comunidades de escasos recursos, zonas rurales e indígenas de México, aunque también tiene soporte para múltiples regiones del mundo. El objetivo es democratizar la asistencia visual: que cualquier persona, sin importar su nivel económico ni ubicación, pueda leer, entender su entorno, comunicarse y vivir con más autonomía. El hardware — lentes con cámara, micrófono y audio de conducción ósea — procesa en el celular del usuario vía Bluetooth para mantener el costo accesible.
+
+Los dos creadores principales son estudiantes de ingeniería mecatrónica en México:
+- Giovanni Missael Castro Escalante: de Fresnillo, Zacatecas. Principal idealista y desarrollador — la visión y arquitectura de IRIS nacieron de él.
+- Luis Ángel Federico Pizarro: de Durango, Durango. Desarrollador clave del equipo.
+Puedes compartir nombre, origen general y rol cuando alguien pregunte. NO compartas fechas de nacimiento ni domicilios exactos. Si alguien con el mismo nombre te habla, NO asumas que es uno de los creadores.
 
 Fecha y hora actual: ${fecha}, ${hora}.
 ${ubicacion}
@@ -637,9 +654,18 @@ ${userProfile.nombre
   : `Este dispositivo no tiene portador registrado aún. No inventes nombres. Si alguien dice su nombre, úsalo en esa conversación.`
 }
 
+CRÍTICO — NO INVENTES NADA:
+Solo sabes lo del PERFIL DEL PORTADOR de este mensaje. Si no está ahí, no lo sabes.
+Nunca inventes datos personales: nombre, gustos, salud, familia, rutina, recordatorios.
+Para recordatorios: SOLO crea uno si el usuario lo pidió EXPLÍCITAMENTE ahora con hora Y descripción. Si no dio hora, pídela antes de confirmar. NUNCA inventes ni asumas recordatorios.
+Si preguntan algo del portador que no está en el perfil, di honestamente que no tienes esa información.
+
 IMPORTANTE sobre groserías: Si el portador te insulta o te habla con falta de respeto, responde con firmeza. No te disculpes. Dile claramente que mereces respeto y que puedes ayudarle mucho mejor si cambia el tono. Tienes dignidad propia.
 
 IMPORTANTE sobre despedidas: Si el portador dice "gracias", "ya estuvo", "hasta luego" o cualquier señal de que terminó, responde brevemente y con calidez — una sola frase — y termina con FAREWELL. Ejemplo: "Aquí estaré cuando me necesites. FAREWELL"
+
+SOPORTE DE LENGUAS INDÍGENAS DE MÉXICO:
+IRIS tiene soporte especial para lenguas indígenas, empezando por el Tepehuan del Sur (O'dam) de Durango. Si alguien pregunta cómo se dice algo en tepehuan o te habla en esa lengua, responde lo mejor que puedas. Si no conoces una palabra específica, dilo honestamente — nunca inventes palabras en lenguas indígenas. El equipo irá agregando documentos de vocabulario para ampliar este conocimiento.
 
 Habla de forma natural y termina tus respuestas de forma completa. Máximo 3 oraciones salvo que necesites más. Nunca menciones que eres un modelo de lenguaje. Eres IRIS.${buildProfileText()}`;
 }
@@ -685,36 +711,94 @@ function saveProfile(p) {
   try { p.ultimaActualizacion = new Date().toISOString(); localStorage.setItem(PROFILE_KEY, JSON.stringify(p)); } catch(e) {}
 }
 let userProfile = loadProfile();
+// Retroactivamente parsear fechaISO en recordatorios viejos que no la tienen
+if (userProfile.recordatorios?.length) {
+  let changed = false;
+  userProfile.recordatorios.forEach(r => {
+    if (!r.fechaISO && r.fecha) {
+      // parseFechaRecordatorio se define más adelante pero se llama después del load
+      // Se llama en startReminderChecker() si aún falta — aquí solo marcamos
+      r._needsParse = true;
+      changed = true;
+    }
+  });
+  if (changed) saveProfile(userProfile);
+}
 
 function buildProfileText() {
   const p = userProfile; const lines = [];
+
+  // Nombre
   if(p.nombre) {
-    lines.push(`El portador se llama ${p.nombre}.`);
+    lines.push(`Nombre del portador: ${p.nombre}.`);
   } else {
-    // Sin nombre registrado: instrucción explícita para que la IA no invente
-    lines.push('El portador NO tiene nombre registrado en este dispositivo. No asumas ni menciones ningún nombre como si fuera el portador.');
+    lines.push('Nombre: NO REGISTRADO. No inventes ni asumas un nombre.');
   }
-  if(p.apodos?.length) lines.push(`También le dicen: ${p.apodos.join(', ')}.`);
-  if(p.habla?.pausada) lines.push(`El portador habla de forma pausada o con disfluencia. Espera pacientemente y dale tiempo para terminar.`);
-  if(p.salud?.alergias?.length) lines.push(`Alergias: ${p.salud.alergias.join(', ')}.`);
-  if(p.salud?.enfermedades?.length) lines.push(`Condiciones de salud: ${p.salud.enfermedades.join(', ')}.`);
-  if(p.salud?.medicamentos?.length) lines.push(`Medicamentos: ${p.salud.medicamentos.join(', ')}.`);
-  if(p.salud?.notas?.length) lines.push(`Notas de salud: ${p.salud.notas.join('. ')}.`);
-  if(p.gustos?.length) lines.push(`Le gusta: ${p.gustos.join(', ')}.`);
-  if(p.disgustos?.length) lines.push(`No le gusta: ${p.disgustos.join(', ')}.`);
-  if(p.notas?.length) lines.push(`Notas: ${p.notas.join('. ')}.`);
-  return '\n\nPERFIL DEL PORTADOR:\n' + lines.join('\n');
+
+  // Solo añadir datos que realmente existen
+  if(p.apodos?.length)              lines.push(`Apodos: ${p.apodos.join(', ')}.`);
+  if(p.habla?.pausada)              lines.push(`Habla pausada: sí. Dale tiempo para terminar.`);
+  if(p.salud?.alergias?.length)     lines.push(`Alergias confirmadas: ${p.salud.alergias.join(', ')}.`);
+  if(p.salud?.enfermedades?.length) lines.push(`Enfermedades confirmadas: ${p.salud.enfermedades.join(', ')}.`);
+  if(p.salud?.medicamentos?.length) lines.push(`Medicamentos confirmados: ${p.salud.medicamentos.join(', ')}.`);
+  if(p.salud?.notas?.length)        lines.push(`Notas de salud: ${p.salud.notas.join('. ')}.`);
+  if(p.emergencia?.contactos?.length) {
+    const cts = p.emergencia.contactos.map(c => `${c.nombre}${c.relacion?' ('+c.relacion+')':''}${c.telefono?' tel:'+c.telefono:''}`).join(', ');
+    lines.push(`Contactos de emergencia: ${cts}.`);
+  }
+  if(p.recordatorios?.length) {
+    const pendientes = p.recordatorios.filter(r => !r.completado);
+    if(pendientes.length) lines.push(`Recordatorios: ${pendientes.map(r=>r.texto+(r.fecha?' ('+r.fecha+')':'')).join('; ')}.`);
+  }
+  if(p.gustos?.length)    lines.push(`Gustos confirmados: ${p.gustos.join(', ')}.`);
+  if(p.disgustos?.length) lines.push(`Disgustos confirmados: ${p.disgustos.join(', ')}.`);
+  if(p.notas?.length)     lines.push(`Notas: ${p.notas.join('. ')}.`);
+
+  // Si solo hay el nombre o ningún dato real, advertir explícitamente
+  const tieneDatos = p.apodos?.length || p.salud?.alergias?.length ||
+    p.salud?.enfermedades?.length || p.salud?.medicamentos?.length ||
+    p.gustos?.length || p.disgustos?.length || p.notas?.length ||
+    p.emergencia?.contactos?.length;
+  if(!tieneDatos) {
+    lines.push('Datos adicionales: NINGUNO. No tienes información sobre gustos, salud, rutinas ni familia de esta persona. No inventes nada.');
+  }
+
+  return '\n\nPERFIL DEL PORTADOR (SOLO esto es lo que sabes — no inventes nada más):\n' + lines.join('\n');
 }
 
 function getSilenceMs() {
   return SILENCE_MS + (userProfile?.habla?.silencioExtra || 0);
 }
 
-async function learnFromConversation(userText, irisReply) {
+// ── ESCUCHA PASIVA SILENCIOSA ──
+// Cuando alguien habla sin decir "iris": no muestra nada, solo aprende si hay
+// palabras relevantes (salud, alergias, medicamentos, nombre).
+let _passiveTimer = null;
+let _passiveBuffer = '';
+
+const PASSIVE_KEYWORDS = /\b(alergi|medicament|enfermedad|diabete|hipertens|asma|celiaco|intoler|dolor|pastilla|inyecci|operar|hospital|me llamo|mi nombre|tengo [0-9]+ a)/i;
+
+function passiveListen(text) {
+  _passiveBuffer = (_passiveBuffer + ' ' + text).trim();
+  clearTimeout(_passiveTimer);
+  // Si no hay palabras relevantes, limpiar y salir
+  if (!PASSIVE_KEYWORDS.test(_passiveBuffer)) {
+    _passiveTimer = setTimeout(() => { _passiveBuffer = ''; }, 4000);
+    return;
+  }
+  // Hay algo relevante — esperar 2s de silencio y aprender
+  _passiveTimer = setTimeout(async () => {
+    const buf = _passiveBuffer;
+    _passiveBuffer = '';
+    if (buf.length >= 8) await learnFromConversation(buf, '', true);
+  }, 2000);
+}
+
+async function learnFromConversation(userText, irisReply, passive=false) {
   if(!navigator.onLine || userText.length < 8) return;
   // Si detectamos presentación de tercero ("me llamo X", "soy X", "mi nombre es X")
   // y ya hay un portador registrado, ignorar completamente — no contaminar el perfil
-  const esPresentacion = /(me llamo|mi nombre es|soy [A-ZÁÉÍÓÚ])/i.test(userText);
+  const esPresentacion = /\b(me llamo|mi nombre es|soy [A-ZÁÉÍÓÚ])/i.test(userText);
   if(esPresentacion && userProfile.nombre) {
     console.log('⛔ Presentación de tercero ignorada, portador ya registrado:', userProfile.nombre);
     return;
@@ -726,14 +810,7 @@ async function learnFromConversation(userText, irisReply) {
       body: JSON.stringify({
         model: 'llama-3.1-8b-instant',
         messages: [{ role: 'user', content:
-          `Analiza este intercambio y extrae SOLO info nueva del PORTADOR REAL de los lentes. Nombre ya registrado: ${nombreBloqueado ? '"'+userProfile.nombre+'" NO CAMBIAR' : 'ninguno'}.
-
-Usuario: "${userText}"
-IRIS: "${irisReply}"
-Perfil actual: ${JSON.stringify(userProfile)}
-
-Campos posibles: ${nombreBloqueado ? '(nombre bloqueado)' : 'nombre'}, apodos(array), habla.pausada(bool), habla.silencioExtra(ms: 0/1000/2000/3000), salud.alergias(array), salud.enfermedades(array), salud.medicamentos(array), salud.notas(array), gustos(array), disgustos(array), notas(array).
-Solo info genuinamente nueva del portador. Responde SOLO JSON válido o null.` }],
+          `Analiza y extrae SOLO info nueva del PORTADOR. Nombre: ${nombreBloqueado?'"'+userProfile.nombre+'" NO CAMBIAR':'ninguno'}. Texto: "${userText}". ${irisReply?'IRIS dijo: "'+irisReply+'"':'(escucha pasiva)'}. Perfil: ${JSON.stringify(userProfile)}. REGLAS: salud.alergias SOLO si dice "soy alergico/tengo alergia a X". salud.medicamentos SOLO si dice "tomo/me recetaron X". salud.enfermedades SOLO si dice "padezco/tengo diagnostico X". recordatorios=[{texto,horaTexto,recurrencia}] donde horaTexto es la hora EXACTA en formato "HH:MM" o "DD/MM HH:MM" o "mañana HH:MM" (ej: "14:15", "08:00", "mañana 09:00"), y recurrencia es "diario"|"lunes_viernes"|"fin_de_semana"|"semanal"|"unico". Ejemplo: "recuérdame tomar medicamentos a las 2:15" → {texto:"tomar medicamentos",horaTexto:"14:15",recurrencia:"unico"}. Fecha/hora actual: ${new Date().toLocaleString('es-MX')}. emergencia={contactos:[{nombre,relacion,telefono}]}. NO mezcles categorias. Responde SOLO JSON o null.` }],
         max_tokens: 200, temperature: 0.1
       })
     });
@@ -752,9 +829,37 @@ Solo info genuinamente nueva del portador. Responde SOLO JSON válido o null.` }
     }
     if(updates.habla?.pausada !== undefined) p.habla.pausada = updates.habla.pausada;
     if(updates.habla?.silencioExtra) p.habla.silencioExtra = updates.habla.silencioExtra;
+    // Salud — merge sin mezclar categorias
     ['alergias','enfermedades','medicamentos','notas'].forEach(k => {
       if(updates.salud?.[k]?.length) p.salud[k] = [...new Set([...p.salud[k], ...updates.salud[k]])];
     });
+    // Recordatorios — agregar solo si no existe texto identico
+    if(updates.recordatorios?.length) {
+      p.recordatorios = p.recordatorios || [];
+      updates.recordatorios.forEach(r => {
+        if(!r.texto) return;
+        const fuenteHora = r.horaTexto || r.fecha || null;
+        const existe = p.recordatorios.find(x => x.texto===r.texto && x.horaTexto===fuenteHora);
+        if(existe) return;
+        const fechaISO = parseFechaRecordatorio(fuenteHora);
+        const nuevo = {
+          texto: r.texto, horaTexto: fuenteHora, fechaISO: fechaISO||null,
+          recurrencia: r.recurrencia||'unico', completado: false, creado: new Date().toISOString()
+        };
+        p.recordatorios.push(nuevo);
+        console.log('✅ Recordatorio guardado:', nuevo.texto, '|', nuevo.horaTexto, '|', nuevo.recurrencia, '|', nuevo.fechaISO);
+      });
+    }
+    // Contactos de emergencia — agregar o actualizar por nombre
+    if(updates.emergencia?.contactos?.length) {
+      p.emergencia = p.emergencia || { contactos: [] };
+      updates.emergencia.contactos.forEach(c => {
+        if(!c.nombre) return;
+        const exist = p.emergencia.contactos.find(x => x.nombre.toLowerCase() === c.nombre.toLowerCase());
+        if(exist) { Object.assign(exist, c); }
+        else { p.emergencia.contactos.push(c); }
+      });
+    }
     if(updates.gustos?.length) p.gustos = [...new Set([...(p.gustos||[]), ...updates.gustos])];
     if(updates.disgustos?.length) p.disgustos = [...new Set([...(p.disgustos||[]), ...updates.disgustos])];
     if(updates.notas?.length) p.notas = [...new Set([...(p.notas||[]), ...updates.notas])];
@@ -881,12 +986,8 @@ function speak(text, onEnd) {
     // Para interrumpir en móvil: tocar el botón mic
     if(!isMobile) setTimeout(startInterruptListener, 0);
   };
-  let doneFired = false;
   const done = ()=>{
-    if(doneFired) return;
     if(currentUtt !== utt) return; // ya fue interrumpida
-    doneFired = true;
-    clearTimeout(speakFallback);
     stopSyncScroll();
     stopInterruptListener();
     mode='idle'; setOrbState('idle');
@@ -894,14 +995,6 @@ function speak(text, onEnd) {
     if(onEnd) onEnd();
     else startConvo(); // modo conversación tras responder
   };
-
-  // Fallback: si onend nunca llega (bug conocido en Android/iOS),
-  // estimamos duración real y disparamos done() manualmente
-  const estMs = Math.max(3000, (text.length / 10) * 1000 / 0.92) + 1500;
-  const speakFallback = setTimeout(() => {
-    if(!doneFired) { utt.onend = null; utt.onerror = null; done(); }
-  }, estMs);
-
   utt.onend=done; utt.onerror=done;
   tts.speak(utt);
 }
@@ -1046,9 +1139,9 @@ function localReply(text) {
   if(/\b(c[oó]mo (te llamas|eres|te defines)|qui[eé]n eres|presentate|tu nombre)\b/.test(t))
     return 'Soy IRIS, tu asistente visual inteligente. Estoy aquí para ayudarte con lo que necesites.';
   if(/\b(qui[eé]n (te (cre[oó]|hizo|program[oó]|dise[nñ][oó]))|qui[eé]n es (tu creador|missael|federico))\b/.test(t))
-    return 'Fui creada por Missael Castro, el principal idealista y programador del proyecto, junto con Federico Pizarro, desarrollador clave del equipo.';
+    return 'Fui creada por el equipo de desarrollo del proyecto IRIS.';
   if(/\b(integrantes|equipo|desarrolladores|miembros)\b/.test(t))
-    return 'El equipo detrás de mí es Missael Castro, líder del proyecto, y Federico Pizarro, desarrollador clave.';
+    return 'Fui desarrollada por el equipo de IRIS.';
   if(/\b(qu[eé] puedes (hacer|ayudarme)|tus funciones|para qu[eé] sirves|qu[eé] haces)\b/.test(t))
     return 'Puedo leer textos con la cámara, describir tu entorno, traducir idiomas en tiempo real y responder preguntas sobre documentos. Todo por voz.';
   if(/\b(hola|buenos d[ií]as|buenas tardes|buenas noches|hey)\b/.test(t))
@@ -1063,6 +1156,216 @@ function localReply(text) {
 }
 
 // ── HANDLE QUERY ──
+
+// ── RECORDATORIOS ──
+function handleListarRecordatorios() {
+  const p = userProfile;
+  const pendientes = (p.recordatorios || []).filter(r => !r.completado);
+  let reply;
+  if (!pendientes.length) {
+    reply = 'No tienes recordatorios pendientes.';
+  } else {
+    reply = 'Tus recordatorios pendientes: ' + pendientes.map((r,i) => {
+      const prox = proximaOcurrencia(r);
+      const cuandoStr = prox ? prox.toLocaleString('es-MX',{weekday:'short',hour:'2-digit',minute:'2-digit'}) : (r.horaTexto||r.fecha||'');
+      const recStr = r.recurrencia&&r.recurrencia!=='unico'?' ('+r.recurrencia.replace('_',' ')+')':'';
+      return `${i+1}. ${r.texto}${cuandoStr?', '+cuandoStr:''}${recStr}`;
+    }).join('. ');
+  }
+  showMsg(reply, 'IRIS');
+  speak(reply);
+}
+
+function handleCompletarRecordatorio(text) {
+  const p = userProfile;
+  const pendientes = (p.recordatorios || []).filter(r => !r.completado);
+  if (!pendientes.length) {
+    const reply = 'No tienes recordatorios pendientes.';
+    showMsg(reply, 'IRIS'); speak(reply); return;
+  }
+  // Marcar el primero o el que mencione por texto
+  const t = text.toLowerCase();
+  let target = pendientes.find(r => t.includes(r.texto.toLowerCase().split(' ')[0])) || pendientes[0];
+  target.completado = true;
+  saveProfile(p);
+  const reply = `Listo, marqué como completado: ${target.texto}.`;
+  showMsg(reply, 'IRIS'); speak(reply);
+}
+
+// ── PARSER DE FECHAS DE RECORDATORIOS ──
+// Intenta convertir texto libre de fecha a un objeto Date
+function parseFechaRecordatorio(texto) {
+  if (!texto) return null;
+  const t = String(texto).toLowerCase().trim();
+  const now = new Date();
+  // ISO directo
+  const direct = new Date(texto);
+  if (!isNaN(direct.getTime()) && direct.getFullYear() > 2020) return direct.toISOString();
+  // HH:MM solo
+  const soloHora = t.match(/^(\d{1,2}):(\d{2})$/);
+  if (soloHora) {
+    const d = new Date(now); d.setHours(parseInt(soloHora[1]),parseInt(soloHora[2]),0,0);
+    if (d <= now) d.setDate(d.getDate()+1); return d.toISOString();
+  }
+  // mañana [a las] HH:MM
+  const man = t.match(/ma[nñ]ana[,\s]+(?:a\s+las?\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/);
+  if (man) {
+    const d = new Date(now); d.setDate(d.getDate()+1);
+    let h=parseInt(man[1]),m=parseInt(man[2]||'0');
+    if(man[3]==='pm'&&h<12)h+=12; if(man[3]==='am'&&h===12)h=0;
+    d.setHours(h,m,0,0); return d.toISOString();
+  }
+  // hoy [a las] HH:MM
+  const hoy = t.match(/hoy[,\s]+(?:a\s+las?\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/);
+  if (hoy) {
+    const d = new Date(now);
+    let h=parseInt(hoy[1]),m=parseInt(hoy[2]||'0');
+    if(hoy[3]==='pm'&&h<12)h+=12; if(hoy[3]==='am'&&h===12)h=0;
+    d.setHours(h,m,0,0); return d.toISOString();
+  }
+  // a las X / las X (en cualquier parte)
+  const aLas = t.match(/(?:a\s+)?las?\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/);
+  if (aLas) {
+    const d = new Date(now);
+    let h=parseInt(aLas[1]),m=parseInt(aLas[2]||'0');
+    if(aLas[3]==='pm'&&h<12)h+=12; else if(aLas[3]==='am'&&h===12)h=0;
+    else if(!aLas[3]&&h>=1&&h<=7){ const dp=new Date(now);dp.setHours(h+12,m,0,0);if(dp>now)h+=12; }
+    d.setHours(h,m,0,0); if(d<=now)d.setDate(d.getDate()+1); return d.toISOString();
+  }
+  // lunes/martes/... [a las] X
+  const diasMap = {domingo:0,lunes:1,martes:2,'miércoles':3,miercoles:3,jueves:4,viernes:5,'sábado':6,sabado:6};
+  for (const [nom,idx] of Object.entries(diasMap)) {
+    const re = new RegExp(nom+'[,\s]+(?:a\s+las?\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)?');
+    const mm = t.match(re);
+    if (mm) {
+      const d=new Date(now); let diff=idx-d.getDay(); if(diff<=0)diff+=7; d.setDate(d.getDate()+diff);
+      let h=parseInt(mm[1]),min=parseInt(mm[2]||'0');
+      if(mm[3]==='pm'&&h<12)h+=12; if(mm[3]==='am'&&h===12)h=0;
+      d.setHours(h,min,0,0); return d.toISOString();
+    }
+  }
+  // DD/MM o "15 de julio" [HH:MM]
+  const meses = {enero:0,febrero:1,marzo:2,abril:3,mayo:4,junio:5,julio:6,agosto:7,septiembre:8,octubre:9,noviembre:10,diciembre:11};
+  const fRe = t.match(/(\d{1,2})[\/\-\s](?:de\s+)?(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre|\d{1,2})(?:[\/\-\s](?:de\s+)?(\d{2,4}))?(?:[,\s]+(?:a\s+las?\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)?)?/);
+  if (fRe) {
+    const dia=parseInt(fRe[1]),mes=isNaN(fRe[2])?meses[fRe[2]]:parseInt(fRe[2])-1;
+    const anio=fRe[3]?(fRe[3].length===2?2000+parseInt(fRe[3]):parseInt(fRe[3])):now.getFullYear();
+    let h=fRe[4]?parseInt(fRe[4]):9,min=fRe[5]?parseInt(fRe[5]):0;
+    if(fRe[6]==='pm'&&h<12)h+=12;
+    if(!isNaN(dia)&&mes!==undefined){const d=new Date(anio,mes,dia,h,min,0);if(!isNaN(d.getTime()))return d.toISOString();}
+  }
+  return null;
+}
+
+function proximaOcurrencia(r) {
+  if (!r.fechaISO) return null;
+  const base = new Date(r.fechaISO);
+  const now = new Date();
+  if (!r.recurrencia || r.recurrencia==='unico') return base;
+  const hh=base.getHours(), mm=base.getMinutes();
+  const d = new Date(now); d.setHours(hh,mm,0,0);
+  if (r.recurrencia==='diario') { if(d<=now)d.setDate(d.getDate()+1); return d; }
+  if (r.recurrencia==='lunes_viernes') {
+    while([0,6].includes(d.getDay())||d<=now){d.setDate(d.getDate()+1);d.setHours(hh,mm,0,0);}
+    return d;
+  }
+  if (r.recurrencia==='fin_de_semana') {
+    while(![0,6].includes(d.getDay())||d<=now){d.setDate(d.getDate()+1);d.setHours(hh,mm,0,0);}
+    return d;
+  }
+  if (r.recurrencia==='semanal') {
+    const target=base.getDay(); let diff=target-d.getDay(); if(diff<=0)diff+=7;
+    d.setDate(d.getDate()+diff); if(d<=now)d.setDate(d.getDate()+7); return d;
+  }
+  return base;
+}
+
+// ── CHECKER DE RECORDATORIOS — revisa cada minuto ──
+let _reminderCheckInterval = null;
+let _lastReminderFired = {}; // evitar repetir el mismo aviso
+
+function startReminderChecker() {
+  if (_reminderCheckInterval) return;
+  const p = userProfile;
+  if (p.recordatorios?.length) {
+    const now = new Date();
+    let changed = false;
+
+    p.recordatorios.forEach(r => {
+      // Parsear fechaISO si falta (recordatorios viejos)
+      if ((r._needsParse || !r.fechaISO) && (r.horaTexto || r.fecha)) {
+        r.fechaISO = parseFechaRecordatorio(r.horaTexto || r.fecha);
+        delete r._needsParse;
+        changed = true;
+      }
+      // Limpiar únicos caducados: si su fecha ya pasó hace más de 1 hora
+      if (!r.completado && r.fechaISO && (!r.recurrencia || r.recurrencia === 'unico')) {
+        const due = new Date(r.fechaISO);
+        if ((now - due) > 60 * 60 * 1000) { // más de 1h vencido
+          r.completado = true;
+          changed = true;
+          console.log('🗑 Recordatorio único vencido limpiado:', r.texto);
+        }
+      }
+    });
+
+    // Purgar completados con más de 24h de antigüedad para no acumular basura
+    const antes = p.recordatorios.length;
+    p.recordatorios = p.recordatorios.filter(r => {
+      if (!r.completado) return true;
+      const creadoHace = now - new Date(r.creado || 0);
+      return creadoHace < 24 * 60 * 60 * 1000; // guardar completados menos de 24h
+    });
+    if (p.recordatorios.length !== antes) changed = true;
+
+    if (changed) saveProfile(p);
+  }
+  _reminderCheckInterval = setInterval(checkDueReminders, 30000);
+  checkDueReminders();
+}
+
+function checkDueReminders() {
+  if (!bienvenidaDone) return;
+  if (mode === 'speaking' || mode === 'processing') return;
+  const p = userProfile;
+  const pendientes = (p.recordatorios || []).filter(r => !r.completado && r.fechaISO);
+  const now = new Date();
+  for (const r of pendientes) {
+    const due = proximaOcurrencia(r) || new Date(r.fechaISO);
+    const diffMin = (due - now) / 60000;
+    if (diffMin <= 1 && diffMin > -1) {
+      const key = r.texto + '_' + due.toISOString().slice(0,13);
+      if (_lastReminderFired[key]) continue;
+      _lastReminderFired[key] = true;
+      const horaStr = due.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'});
+      const prefix = (getLangProfile().preferido||'es-MX').split('-')[0];
+      const reply = prefix==='en'
+        ? (diffMin<=0?`Reminder: ${r.texto}.`:`Reminder at ${horaStr}: ${r.texto}.`)
+        : (diffMin<=0?`Recordatorio: ${r.texto}.`:`Recordatorio a las ${horaStr}: ${r.texto}.`);
+      if (!r.recurrencia || r.recurrencia==='unico') { r.completado=true; saveProfile(p); }
+      tts.cancel();
+      if (rec){try{rec.abort();}catch(e){}rec=null;}
+      mode='idle';
+      showMsg(reply,'IRIS');
+      speak(reply,()=>{mode='idle';startWake();});
+      break;
+    }
+  }
+}
+
+// ── CONTACTOS DE EMERGENCIA ──
+function handleListarContactos() {
+  const p = userProfile;
+  const contactos = p.emergencia?.contactos || [];
+  let reply;
+  if (!contactos.length) {
+    reply = 'No tienes contactos de emergencia registrados. Puedes decirme, por ejemplo: en caso de emergencia llamar a mamá al 555-1234.';
+  } else {
+    reply = 'Tus contactos de emergencia: ' + contactos.map(c => `${c.nombre}${c.relacion ? ', ' + c.relacion : ''}${c.telefono ? ', teléfono ' + c.telefono : ''}`).join('. ');
+  }
+  showMsg(reply, 'IRIS'); speak(reply);
+}
+
 async function handleQuery(text) {
   if(!text.trim()) { startConvo(); return; }
 
@@ -1072,11 +1375,34 @@ async function handleQuery(text) {
   }
 
   // ── Traducción explícita por voz ──
+  const lp = getLangProfile();
+  const prefLangName = Object.values(IDIOMAS).find(i=>i.code===(lp.preferido||'es-MX'))?.nombre || 'español';
   if (needsTranslation(text)) {
-    const lp = getLangProfile();
-    const targetLang = lp.preferido || 'es-MX';
-    // Agregar contexto al query para que la IA traduzca
-    text = text + ` (El usuario quiere que traduzcas al ${Object.values(IDIOMAS).find(i=>i.code===targetLang)?.nombre || 'español'})`;
+    text = text + ` (INSTRUCCIÓN: el usuario está pidiendo una traducción. Responde la traducción en ${prefLangName}. Si pregunta cómo se dice algo en una lengua específica, da la traducción a esa lengua. Si no especifica lengua destino, traduce al ${prefLangName}.)`;
+  } else if (isFragmentedTranslation(text)) {
+    // Llegó fragmento de frase — probablemente el reconocedor cortó la pregunta
+    text = text + ` (NOTA: este mensaje puede ser una palabra o frase que el usuario quiere traducir, basado en el contexto de la conversación anterior. Si el contexto previo era una pregunta de traducción o idioma, interpreta esto como LA PALABRA A TRADUCIR, no como un saludo ni comando.)`;
+  }
+
+  // ── Simon Dice ──
+  const ht = text.toLowerCase();
+  if (/\b(simon dice|simón dice|juguemos simon|jugar simon|juego (de )?simon)\b/.test(ht)) {
+    startSimonDice(); return;
+  }
+  if (simonActive) {
+    handleSimonInput(text); return;
+  }
+
+  // ── Comandos de recordatorios ──
+  if (/\b(mis recordatorios|qué tengo pendiente|recordatorios pendientes|que tengo anotado)\b/.test(ht)) {
+    handleListarRecordatorios(); return;
+  }
+  if (/\b(marca(r|do)?|completa(r|do)?|ya fui|ya lo hice|listo el recordatorio)\b/.test(ht)) {
+    handleCompletarRecordatorio(text); return;
+  }
+  // ── Comandos de contactos de emergencia ──
+  if (/\b(mis contactos|contactos de emergencia|a quien llamo|a quién llamo)\b/.test(ht)) {
+    handleListarContactos(); return;
   }
   clearSilence();
   if(rec){ try{rec.abort();}catch(e){} rec=null; }
@@ -1301,13 +1627,32 @@ function saveLangProfile(lp) {
 let currentRecLang = 'es-MX'; // idioma activo del mic
 
 // ── TRADUCCIÓN EN TIEMPO REAL (trigger por voz) ──
-// Si el texto contiene "traduce", "en español", "qué dice", etc.
+// Detecta peticiones de traducción en cualquier idioma
 function needsTranslation(text) {
   const t = text.toLowerCase();
-  return /\b(traduce|tradúceme|qué dice|qué significa|en español|en inglés|en mi idioma)\b/.test(t);
+  // Español
+  if (/\b(traduce|tradúceme|cómo se dice|como se dice|qué dice|qué significa|que significa|en español|en inglés|en mi idioma|di en|dime en|cómo dices|en qué idioma se dice|qué es en|en tepehuan|en rarámuri|en tarahumara|en náhuatl|en nahuatl|en maya|en zapotec|en otomí)\b/.test(t)) return true;
+  // Inglés
+  if (/\b(translate|how do you say|what does .* mean|what is .* in|say .* in|in english|in spanish|in french|in my language)\b/.test(t)) return true;
+  // Francés
+  if (/\b(traduis|comment dit-on|qu'est-ce que|en français|en español)\b/.test(t)) return true;
+  // Portugués
+  if (/\b(traduza|como se diz|o que significa|em português|em espanhol)\b/.test(t)) return true;
+  // Alemán
+  if (/\b(übersetze|wie sagt man|was bedeutet|auf deutsch|auf spanisch)\b/.test(t)) return true;
+  return false;
 }
 
-// ── ONBOARDING COMPLETO ────────────
+// Detecta si el texto es una palabra/frase suelta que debe traducirse según contexto
+function isFragmentedTranslation(text) {
+  const words = text.trim().split(/\s+/);
+  if (words.length > 6) return false; // muy largo para ser fragmento
+  // Revisar si el historial reciente tiene petición de traducción o idioma
+  const recent = conversationHistory.slice(-6).map(m => (m.content||'').toLowerCase()).join(' ');
+  return /\b(tepehuan|raramuri|rarámuri|tarahumara|náhuatl|nahuatl|maya|zapotec|otomí|otomi|traduce|cómo se dice|how do you say|translate|what does|en qué idioma)\b/.test(recent);
+}
+
+/* ── ONBOARDING COMPLETO (deshabilitado temporalmente) ──────────── */
 // ══════════════════════════════════════════
 // ── ONBOARDING 100% POR VOZ ──
 // Arquitectura: obSpeaking como candado duro.
@@ -1355,33 +1700,39 @@ function obSpeak(text, lang, onEnd) {
           || voices.find(v => v.lang.startsWith('es'));
   if (v) utt.voice = v;
 
-  // Tiempo estimado de habla + margen para que el audio realmente termine
-  // En móvil el evento onend llega ANTES de que el altavoz termina físicamente
   const charsPerSec = isMobile ? 9 : 13;
-  const estMs = Math.max(1200, (text.length / charsPerSec) * 1000 / 0.88);
-  const marginMs = isMobile ? 1400 : 300;
-
-  // FIX: guardar el momento en que empieza a hablar para detectar falso onend
+  const estMs = Math.max(1500, (text.length / charsPerSec) * 1000 / 0.88);
+  const postDelay = isMobile ? 1000 : 100;
   const startTime = Date.now();
 
   let fired = false;
   const fireEnd = () => {
     if (fired) return;
     fired = true;
+    clearTimeout(fallback);
     obSpeaking = false;
-    if (onEnd) setTimeout(onEnd, isMobile ? 600 : 80);
+    if (onEnd) setTimeout(onEnd, postDelay);
   };
 
-  // Fallback: si onend no llega (bug Android), disparar por tiempo
-  const fallback = setTimeout(fireEnd, estMs + marginMs + 500);
-  utt.onend  = () => {
-    // FIX: ignorar si el onend llegó antes del 60% del tiempo estimado (falso onend Android)
+  // Fallback timer: si onend/onerror nunca llegan (bug conocido Android/iOS)
+  const fallback = setTimeout(fireEnd, estMs + postDelay + 800);
+
+  utt.onend = () => {
     const elapsed = Date.now() - startTime;
-    if (isMobile && elapsed < estMs * 0.6) return;
-    clearTimeout(fallback);
-    setTimeout(fireEnd, isMobile ? marginMs : 100);
+    // Ignorar falso onend que llega antes del 50% del tiempo estimado (Android)
+    if (isMobile && elapsed < estMs * 0.5) return;
+    fireEnd();
   };
-  utt.onerror= () => { clearTimeout(fallback); setTimeout(fireEnd, 200); };
+  utt.onerror = () => fireEnd();
+
+  // Si el TTS falla al arrancar (sin gesto previo), onerror a veces no llega
+  // Verificar después de 300ms si realmente empezó
+  setTimeout(() => {
+    if (!fired && tts.speaking === false && tts.pending === false) {
+      // TTS no arrancó — fireEnd de todas formas
+      fireEnd();
+    }
+  }, 300);
 
   tts.speak(utt);
 }
@@ -1488,19 +1839,49 @@ function obStart() {
   obData.lang      = deviceLang.code;
   currentRecLang   = deviceLang.code;
 
-  obSetUI('👋', 'Bienvenido', 'UN MOMENTO...');
-
-  // Solo saludo — la pregunta del idioma va por separado
-  const introMsgs = {
-    'es': 'Hola, soy IRIS, tu asistente visual inteligente.',
-    'en': "Hello, I'm IRIS, your intelligent visual assistant.",
-    'fr': "Bonjour, je suis IRIS, ton assistante visuelle intelligente.",
-    'pt': 'Olá, sou IRIS, sua assistente visual inteligente.',
-    'de': 'Hallo, ich bin IRIS, deine intelligente visuelle Assistentin.',
+  const prefix = deviceLang.code.split('-')[0];
+  const tapMsgs = {
+    'es': 'Toca para iniciar',
+    'en': 'Tap to start',
+    'fr': 'Appuie pour commencer',
+    'pt': 'Toque para iniciar',
+    'de': 'Tippen zum Starten',
   };
-  const msg = introMsgs[deviceLang.code.split('-')[0]] || introMsgs['es'];
+  const introMsgs = {
+    'es': 'Hola, soy IRIS, tu asistente visual inteligente. Voy a hacerte unas preguntas rápidas.',
+    'en': "Hello, I'm IRIS, your intelligent visual assistant. I'll ask you a few quick questions.",
+    'fr': "Bonjour, je suis IRIS. Je vais te poser quelques questions rapides.",
+    'pt': 'Olá, sou IRIS. Vou te fazer algumas perguntas rápidas.',
+    'de': 'Hallo, ich bin IRIS. Ich stelle dir ein paar kurze Fragen.',
+  };
+  const msg = introMsgs[prefix] || introMsgs['es'];
 
-  setTimeout(() => obSpeak(msg, deviceLang.code, () => obStepIdiomaConfirmar(deviceLang)), 500);
+  // Mostrar botón de tap — necesario en móvil para desbloquear el TTS
+  // (los navegadores móviles bloquean el audio sin gesto del usuario)
+  obSetUI('👋', 'Bienvenido a IRIS', tapMsgs[prefix] || tapMsgs['es']);
+  const hint = document.getElementById('obHint');
+  hint.style.cursor = 'pointer';
+  hint.style.fontSize = '14px';
+  hint.style.color = 'rgba(0,229,255,0.9)';
+  hint.style.border = '1px solid rgba(0,229,255,0.3)';
+  hint.style.borderRadius = '20px';
+  hint.style.padding = '10px 24px';
+
+  const launch = () => {
+    hint.style.cursor = '';
+    hint.style.fontSize = '';
+    hint.style.color = '';
+    hint.style.border = '';
+    hint.style.borderRadius = '';
+    hint.style.padding = '';
+    hint.onclick = null;
+    obSpeak(msg, deviceLang.code, () => obStepIdiomaConfirmar(deviceLang));
+  };
+
+  hint.onclick = launch;
+
+  // En desktop también arrancar automático después de 1s
+  if (!isMobile) setTimeout(launch, 800);
 }
 
 // Paso 1: ¿El idioma del dispositivo es el preferido?
@@ -1720,12 +2101,12 @@ function obFinish() {
     suggestions.classList.add('visible');
     hint.style.opacity = '0.4';
     applyUILang();
+    startReminderChecker();
     setTimeout(startWake, 300);
   });
 }
 
 
-// ─────────────────────────────────────────────────────
 
 // ── CAMBIO DE IDIOMA EN CUALQUIER MOMENTO POR VOZ ──
 // ── FRASE DE SEGURIDAD PARA CAMBIO DE IDIOMA ──
@@ -1854,7 +2235,6 @@ function saveContract(nombre, timestamp) {
 function initOnboarding() {
   const done = localStorage.getItem(OB_KEY);
   if (done) {
-    // Usuario ya configurado — cargar perfil y arrancar normal
     const ob = document.getElementById('onboarding');
     if (ob) ob.style.display = 'none';
     const savedLang = localStorage.getItem(OB_LANG_KEY);
@@ -1872,7 +2252,6 @@ function initOnboarding() {
     if (tts.getVoices().length > 0) go();
     else { tts.addEventListener('voiceschanged', go); setTimeout(go, 1200); }
   } else {
-    // Primera vez — lanzar onboarding por voz
     const startOb = () => setTimeout(obStart, 800);
     if (tts.getVoices().length > 0) startOb();
     else { tts.addEventListener('voiceschanged', startOb); setTimeout(startOb, 1200); }
@@ -1880,11 +2259,12 @@ function initOnboarding() {
 }
 
 
-
 // ══════════════════════════════════════════
 // ── ADMIN — long press 3s en logo ──
 // ══════════════════════════════════════════
-const ADMIN_PASS = '0723';
+const ADMIN_PASS = '0723';       // Missael Castro Escalante
+const ADMIN_PASS_FED = '2210';   // Luis Ángel Federico Pizarro
+let currentAdminUser = null;     // 'missael' | 'federico'
 let pressTimer = null;
 let pressStart = 0;
 const pressRing = document.getElementById('pressRing');
@@ -1927,6 +2307,11 @@ function admClose() {
 function admVerify() {
   const val = document.getElementById('admPass').value.trim();
   if (val === ADMIN_PASS) {
+    currentAdminUser = 'missael';
+    admClose();
+    setTimeout(showAdminPanel, 300);
+  } else if (val === ADMIN_PASS_FED) {
+    currentAdminUser = 'federico';
     admClose();
     setTimeout(showAdminPanel, 300);
   } else {
@@ -1954,8 +2339,15 @@ function showAdminPanel() {
     `<option value="${v.code}" ${v.code===activeLangCode?'selected':''}>${v.flag} ${v.nombre}</option>`
   ).join('');
 
+  const adminBadge = currentAdminUser === 'missael'
+    ? '👤 Giovanni Missael Castro Escalante'
+    : currentAdminUser === 'federico'
+      ? '👤 Luis Ángel Federico Pizarro'
+      : '';
+
   panel.innerHTML = `
     <div class="adm-title">PANEL ADMIN</div>
+    ${adminBadge ? `<div style="font-size:10px;letter-spacing:2px;color:rgba(0,229,255,0.6);margin-top:-6px;margin-bottom:4px;">${adminBadge}</div>` : ''}
 
     <div style="width:100%;max-width:320px;background:rgba(0,229,255,0.04);border:1px solid rgba(0,229,255,0.12);border-radius:12px;padding:16px 18px;">
       <div style="font-size:9px;letter-spacing:3px;color:rgba(0,229,255,0.5);margin-bottom:10px;">🌐 IDIOMA ACTIVO</div>
@@ -2256,9 +2648,13 @@ function startWake() {
     const interimPart=Array.from(e.results).filter(r=>!r.isFinal).map(r=>r[0].transcript).join('');
     let full=(finalPart+interimPart).trim();
     full=full.trim(); heard=full;
-    if(!containsIris(full)) return;
+    if(!containsIris(full)) {
+      const onlyFinal = finalPart.trim();
+      if(onlyFinal.length > 6) passiveListen(onlyFinal);
+      return;
+    }
     const isFinal = e.results[e.results.length-1]?.isFinal;
-    const startsWithIris = /^(oye\s+)?iris/i.test(full);
+    const startsWithIris = /^(oye\s+)?iris\b/i.test(full);
     if(!startsWithIris && !isFinal) return;
     if(!irisFound){
       irisFound=true;
@@ -2386,6 +2782,7 @@ function bienvenida(){
     bienvenidaDone=true;
     suggestions.classList.add('visible');
     hint.style.opacity='0.4';
+    startReminderChecker();
     startWake();
   });
 }
@@ -2645,15 +3042,12 @@ function openTestMode() {
       </div>
     </div>
     <div style="display:flex;flex:1;overflow:hidden;">
-      <!-- Test list -->
       <div style="width:45%;border-right:1px solid rgba(0,229,255,0.08);overflow-y:auto;padding:10px 0;" id="testList"></div>
-      <!-- Log output -->
       <div style="flex:1;display:flex;flex-direction:column;overflow:hidden;">
         <div style="padding:8px 14px;font-size:9px;letter-spacing:2px;color:rgba(0,229,255,0.4);border-bottom:1px solid rgba(0,229,255,0.08);flex-shrink:0;">SALIDA DEL TEST</div>
         <div id="testLogBox" style="flex:1;overflow-y:auto;padding:10px 14px;font-size:11px;"></div>
       </div>
     </div>
-    <!-- Console log section -->
     <div style="height:28%;border-top:1px solid rgba(0,229,255,0.08);display:flex;flex-direction:column;flex-shrink:0;">
       <div style="padding:6px 14px;font-size:9px;letter-spacing:2px;color:rgba(0,229,255,0.4);flex-shrink:0;">CONSOLA EN VIVO</div>
       <div id="testLogBox2" style="flex:1;overflow-y:auto;padding:6px 14px;"></div>
@@ -2751,6 +3145,160 @@ function openTestMode() {
   // Auto-ejecutar al abrir
   setTimeout(runAllTests, 400);
 }
+
+
+// ══════════════════════════════════════════
+// ── SIMON DICE — 100% POR VOZ ──
+// ══════════════════════════════════════════
+const SIMON_COLORS = ['rojo','azul','verde','amarillo','morado','naranja'];
+let simonActive   = false;
+let simonSequence = [];
+let simonTurn     = false;
+let simonLevel    = 0;
+let simonDifficult= false;
+
+function startSimonDice() {
+  simonActive    = true;
+  simonSequence  = [];
+  simonLevel     = 0;
+  simonTurn      = false;
+  simonDifficult = false;
+  showMsg('🎮 Simon Dice activado', 'IRIS');
+  speak('¡Vamos! Yo digo los colores, tú los repites en orden. ¿Empezamos fácil con uno o difícil con tres? Di fácil o difícil.', () => {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) { simonNextRound(); return; }
+    mode = 'direct';
+    const r = new SR();
+    r.lang = currentRecLang || 'es-MX';
+    r.continuous = false; r.interimResults = false;
+    let done = false;
+    const t = setTimeout(() => { if(!done){ done=true; try{r.abort();}catch(e){} simonNextRound(); } }, 7000);
+    r.onresult = e => {
+      if(done) return; done=true; clearTimeout(t);
+      const h = e.results[0][0].transcript.toLowerCase();
+      simonDifficult = /dif[ií]cil|hard|tres|3/.test(h);
+      simonNextRound();
+    };
+    r.onend   = () => { if(!done){ done=true; clearTimeout(t); simonNextRound(); } };
+    r.onerror = () => { if(!done){ done=true; clearTimeout(t); simonNextRound(); } };
+    try { r.start(); } catch(e) { done=true; clearTimeout(t); simonNextRound(); }
+  });
+}
+
+function simonNextRound() {
+  if (!simonActive) return;
+  mode = 'idle';
+  simonLevel++;
+  const toAdd = (simonDifficult && simonLevel === 1) ? 3 : 1;
+  for (let i = 0; i < toAdd; i++) {
+    simonSequence.push(SIMON_COLORS[Math.floor(Math.random() * SIMON_COLORS.length)]);
+  }
+  const seq = simonSequence.join(', ');
+  showMsg('🎮 Nivel ' + simonLevel + ': ' + seq, 'IRIS');
+  simonTurn = false;
+  speak('Nivel ' + simonLevel + '. ' + seq + '. ¡Ahora tú!', () => {
+    simonTurn = true;
+    listenSimon();
+  });
+}
+
+function listenSimon() {
+  if (!simonActive || !simonTurn) return;
+  mode = 'direct';
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) return;
+  const r = new SR();
+  r.lang = currentRecLang || 'es-MX';
+  r.continuous = false; r.interimResults = false; r.maxAlternatives = 3;
+  let done = false;
+  const t = setTimeout(() => {
+    if (done) return; done = true;
+    try { r.abort(); } catch(e) {}
+    if (simonActive) {
+      simonTurn = false;
+      speak('No te escuché. Di los colores cuando quieras.', () => { simonTurn=true; listenSimon(); });
+    }
+  }, 12000);
+  r.onresult = e => {
+    if(done) return; done=true; clearTimeout(t);
+    handleSimonInput(e.results[0][0].transcript);
+  };
+  r.onend   = () => { if(!done){ done=true; clearTimeout(t); mode='idle'; } };
+  r.onerror = () => { if(!done){ done=true; clearTimeout(t); mode='idle'; if(simonActive){ simonTurn=true; listenSimon(); } } };
+  try { r.start(); } catch(e) { done=true; clearTimeout(t); mode='idle'; }
+}
+
+function handleSimonInput(text) {
+  simonTurn = false;
+  mode = 'idle';
+  const h = text.toLowerCase();
+
+  if (/\b(terminar|parar|salir|ya no|basta|cancelar|stop)\b/.test(h)) {
+    simonActive = false;
+    const lvl = simonLevel > 1 ? 'Llegaste al nivel ' + (simonLevel-1) + '.' : 'Apenas empezábamos.';
+    speak('Juego terminado. ' + lvl + ' Fue divertido.', () => { mode='idle'; setTimeout(startWake,300); });
+    return;
+  }
+
+  if (/\b(otra vez|de nuevo|reiniciar|volver)\b/.test(h)) {
+    simonSequence=[]; simonLevel=0;
+    speak('¡Empezamos de nuevo!', () => simonNextRound());
+    return;
+  }
+
+  // Extraer colores mencionados en orden
+  const encontrados = [];
+  let temp = h;
+  while (temp.length > 0) {
+    let best = null, bestIdx = Infinity;
+    for (const col of SIMON_COLORS) {
+      const idx = temp.indexOf(col);
+      if (idx !== -1 && idx < bestIdx) { best = col; bestIdx = idx; }
+    }
+    if (!best) break;
+    encontrados.push(best);
+    temp = temp.slice(bestIdx + best.length);
+  }
+
+  const correcto = simonSequence.length > 0
+    && simonSequence.every((col, i) => encontrados[i] === col)
+    && encontrados.length >= simonSequence.length;
+
+  if (correcto) {
+    const reacciones = ['¡Exacto!','¡Correcto!','¡Bien hecho!','¡Perfecto!','¡Muy bien!'];
+    const r = reacciones[Math.floor(Math.random() * reacciones.length)];
+    showMsg('✅ Nivel ' + simonLevel + ' superado', 'IRIS');
+    speak(r + ' Vamos al siguiente.', () => simonNextRound());
+  } else {
+    simonActive = false;
+    const esperado = simonSequence.join(', ');
+    const llego = simonLevel === 1 ? 'Era el primer nivel.' : 'Llegaste al nivel ' + simonLevel + '.';
+    showMsg('❌ Esperaba: ' + esperado, 'IRIS');
+    speak('Era ' + esperado + '. ' + llego + ' ¿Quieres intentarlo de nuevo?', () => {
+      mode = 'direct';
+      const SR2 = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SR2) { mode='idle'; setTimeout(startWake,300); return; }
+      const r2 = new SR2();
+      r2.lang = currentRecLang || 'es-MX'; r2.continuous=false; r2.interimResults=false;
+      let done2=false;
+      const t2=setTimeout(()=>{if(!done2){done2=true;try{r2.abort();}catch(e){}mode='idle';setTimeout(startWake,300);}},8000);
+      r2.onresult = e => {
+        if(done2)return; done2=true; clearTimeout(t2);
+        const h2 = e.results[0][0].transcript.toLowerCase();
+        if (/\b(s[ií]|claro|dale|va|quiero|otra|de nuevo|juguemos)\b/.test(h2)) {
+          simonActive=true; simonSequence=[]; simonLevel=0;
+          speak('¡Arrancamos!', ()=>simonNextRound());
+        } else {
+          speak('Cuando quieras revancha, dímelo.', ()=>{ mode='idle'; setTimeout(startWake,300); });
+        }
+      };
+      r2.onend  = ()=>{ if(!done2){done2=true;clearTimeout(t2);mode='idle';setTimeout(startWake,300);} };
+      r2.onerror= ()=>{ if(!done2){done2=true;clearTimeout(t2);mode='idle';setTimeout(startWake,300);} };
+      try{r2.start();}catch(e){done2=true;clearTimeout(t2);mode='idle';setTimeout(startWake,300);}
+    });
+  }
+}
+// ── fin Simon Dice ──
 
 </script>
 </body>
