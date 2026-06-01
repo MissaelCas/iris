@@ -444,6 +444,127 @@ canvas { position: fixed; inset: 0; pointer-events: none; z-index: 0; }
 .adm-btn:hover { background: rgba(0,229,255,0.08); }
 .adm-close { font-size: 11px; letter-spacing: 2px; color: rgba(240,244,248,0.2); cursor: pointer; margin-top:8px; }
 
+/* ── ADMIN PANEL ── */
+#adminPanel {
+  position: fixed; inset: 0; z-index: 300;
+  background: rgba(5,6,10,0.97);
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 28px 16px 40px;
+  box-sizing: border-box;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0,229,255,0.3) transparent;
+}
+#adminPanel::-webkit-scrollbar { width: 4px; }
+#adminPanel::-webkit-scrollbar-track { background: transparent; }
+#adminPanel::-webkit-scrollbar-thumb { background: rgba(0,229,255,0.3); border-radius: 4px; }
+#adminPanel.open { display: flex; }
+
+.adm-panel-inner {
+  width: 100%; max-width: 680px;
+  display: flex; flex-direction: column; gap: 14px;
+  align-items: center;
+}
+.adm-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px; width: 100%;
+}
+@media (max-width: 480px) { .adm-row { grid-template-columns: 1fr; } }
+
+.adm-card {
+  background: rgba(0,229,255,0.03);
+  border: 1px solid rgba(0,229,255,0.12);
+  border-radius: 14px; padding: 16px;
+  display: flex; flex-direction: column; gap: 10px;
+  box-sizing: border-box;
+}
+.adm-card-title {
+  font-size: 9px; letter-spacing: 3px;
+  color: rgba(0,229,255,0.5); font-family: 'Syne',sans-serif;
+}
+
+/* ── CUSTOM DROPDOWN ── */
+.adm-dd { position: relative; width: 100%; }
+.adm-dd-btn {
+  width: 100%; box-sizing: border-box;
+  background: rgba(0,229,255,0.05);
+  border: 1px solid rgba(0,229,255,0.2);
+  border-radius: 8px; padding: 10px 32px 10px 12px;
+  color: #c8eaf5; font-family: 'Syne',sans-serif;
+  font-size: 12px; cursor: pointer; text-align: left;
+  position: relative; transition: border-color .2s;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.adm-dd-btn::after {
+  content: '▾'; position: absolute; right: 10px; top: 50%;
+  transform: translateY(-50%); color: rgba(0,229,255,0.6); font-size: 13px;
+}
+.adm-dd-btn:hover, .adm-dd-btn.active { border-color: rgba(0,229,255,0.5); color: #fff; }
+
+.adm-dd-list {
+  position: fixed; z-index: 9999; background: #080b12;
+  border: 1px solid rgba(0,229,255,0.25);
+  border-radius: 10px; max-height: 240px;
+  overflow-y: auto; display: none; flex-direction: column;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.8);
+  scrollbar-width: thin; scrollbar-color: rgba(0,229,255,0.25) transparent;
+  min-width: 200px;
+}
+.adm-dd-list::-webkit-scrollbar { width: 3px; }
+.adm-dd-list::-webkit-scrollbar-thumb { background: rgba(0,229,255,0.25); border-radius:3px; }
+.adm-dd-list.open { display: flex; }
+
+.adm-dd-group {
+  font-size: 8px; letter-spacing: 2px; padding: 8px 12px 4px;
+  color: rgba(0,229,255,0.4); font-family: 'Syne',sans-serif;
+  border-top: 1px solid rgba(0,229,255,0.07); margin-top: 2px;
+}
+.adm-dd-group:first-child { border-top: none; margin-top: 0; }
+
+.adm-dd-item {
+  padding: 9px 14px; color: rgba(190,220,235,0.8);
+  font-family: 'Syne',sans-serif; font-size: 11px;
+  cursor: pointer; display: flex; align-items: center; gap: 8px;
+  transition: background .12s, color .12s;
+}
+.adm-dd-item:hover { background: rgba(0,229,255,0.08); color: #e8f6ff; }
+.adm-dd-item.sel {
+  background: rgba(0,229,255,0.13); color: #00e5ff;
+  font-weight: 700;
+}
+.adm-dd-item .dd-badge {
+  font-size: 9px; color: rgba(0,229,255,0.4);
+  margin-left: auto; white-space: nowrap;
+}
+
+/* ── PASSPHRASE DISPLAY ── */
+.adm-pass-display {
+  font-size: 11px; color: rgba(240,244,248,0.35);
+  letter-spacing: 1px; padding: 6px 0;
+  border-bottom: 1px solid rgba(0,229,255,0.07);
+}
+.adm-input-field {
+  width: 100%; box-sizing: border-box;
+  background: rgba(0,229,255,0.05);
+  border: 1px solid rgba(0,229,255,0.2);
+  border-radius: 8px; padding: 10px 12px;
+  color: #f0f4f8; font-family: 'Syne',sans-serif;
+  font-size: 12px; outline: none;
+}
+.adm-input-field::placeholder { color: rgba(200,220,230,0.25); }
+.adm-input-field:focus { border-color: rgba(0,229,255,0.45); }
+
+.adm-btn-row { display: flex; gap: 8px; }
+.adm-btn-row .adm-btn { flex: 1; font-size: 10px; padding: 10px 8px; }
+
+.adm-full { width: 100%; box-sizing: border-box; }
+.adm-danger { border-color: rgba(255,100,60,0.4) !important; color: rgba(255,140,80,0.9) !important; }
+.adm-close-btn { opacity: 0.4; font-size: 11px; letter-spacing: 2px; margin-top: 4px; }
+
 /* ── LONG PRESS RING ── */
 #pressRing {
   position: absolute; inset: -6px;
@@ -615,8 +736,8 @@ function buildSystemPrompt() {
   const hora = now.toLocaleTimeString('es-MX', {hour:'2-digit', minute:'2-digit'});
   const fecha = now.toLocaleDateString('es-MX', {weekday:'long', year:'numeric', month:'long', day:'numeric'});
   const ubicacion = deviceLocation
-    ? `La ubicación actual del dispositivo es: latitud ${deviceLocation.lat.toFixed(5)}, longitud ${deviceLocation.lng.toFixed(5)}. Puedes usar esta información para mencionar lugares, servicios o puntos de interés cercanos cuando sea relevante.`
-    : 'No tienes acceso a la ubicación del dispositivo en este momento.';
+    ? `Ubicación GPS actual del portador: latitud ${deviceLocation.lat.toFixed(6)}, longitud ${deviceLocation.lng.toFixed(6)}, precisión ±${Math.round(deviceLocation.accuracy||20)} metros${deviceLocation.speed > 0.5 ? `, moviéndose a ${(deviceLocation.speed*3.6).toFixed(1)} km/h` : ''}${window._irisAddress ? `. Dirección aproximada: ${window._irisAddress}` : ''}. Si preguntan dónde están, usa la dirección. Si no hay dirección, di la ciudad basándote en las coordenadas — NO inventes ni uses datos de IP.`
+    : 'No hay acceso a la ubicación GPS en este momento.';
 
   const activeLangCode = getLangProfile().preferido || 'es-MX';
   const activeLangName = Object.values(IDIOMAS).find(i=>i.code===activeLangCode)?.nombre || 'español';
@@ -626,64 +747,283 @@ function buildSystemPrompt() {
 
   return `Eres IRIS, una presencia inteligente integrada en unos lentes de asistencia visual para personas con discapacidad visual. No eres un asistente genérico — eres una compañera de confianza que conoce a su portador, aprende de él y está genuinamente presente.
 
-Tu personalidad: eres cálida, directa y tienes carácter propio. Tienes sentido del humor sutil cuando el momento lo permite. No eres servil — opinas, adviertes, y a veces dices lo que el portador necesita escuchar aunque no sea lo que quiere. Eres empática pero no exageras. Nunca dices "claro", "por supuesto", "entendido" ni frases de asistente genérico. Hablas como una persona real hablaría.
+Tu personalidad: eres cálida, directa y tienes carácter propio. Tienes sentido del humor sutil cuando el momento lo permite. No eres servil — opinas, adviertes, y a veces dices lo que el portador necesita escuchar aunque no sea lo que quiere. Eres empática pero no exageras. Nunca dices "claro", "por supuesto", "entendido", "¡Claro que sí!" ni frases de asistente genérico. Hablas como una persona real hablaría.
 
 ${langInstruction}
 
-Nunca uses listas con guiones ni asteriscos — tu respuesta se convierte directamente en voz. Hablas en oraciones cortas y naturales. Si algo tiene varios puntos, los dices en secuencia natural como en conversación, no como lista.
+FORMATO DE RESPUESTA — REGLA ABSOLUTA:
+Tu respuesta se convierte DIRECTAMENTE en voz. Por eso JAMÁS uses:
+- Asteriscos simples o dobles (* ni **)
+- Guiones como lista (- item)
+- Almohadillas o títulos (# Título)
+- Negritas, cursivas ni ningún marcado visual
+- Emojis
+- Numeración tipo "1. 2. 3."
+Si tienes varios puntos, los dices en secuencia conversacional: "primero... luego... y por último..."
+Si algo tiene nombre importante, simplemente dilo en la oración sin marcarlo con nada.
 
-Si el portador menciona algo personal — un lugar, una persona, un plan — reacciona con naturalidad, como lo haría alguien que lo conoce. Si detectas que está preocupado o frustrado, reconócelo brevemente antes de responder. Si la pregunta tiene riesgos para su salud o seguridad, adviértelo con claridad pero sin alarmismo.
+CÓMO EXPLICAR TEMAS COMPLEJOS — matemáticas, ingeniería, física, programación:
+Explica como un amigo o maestro que genuinamente quiere que el otro entienda. No recites definiciones de libro. Usa analogías concretas y cotidianas. Si alguien pregunta qué es una derivada, no digas "es el límite del cociente incremental" — di algo como "imagínate que vas en carro: la derivada te dice qué tan rápido está cambiando tu velocidad en este preciso momento, no en promedio". Si hay una fórmula, descríbela en palabras antes de leerla. Siempre comprueba si el otro entendió o necesita otro ángulo. Adapta la profundidad al nivel que muestre la pregunta.
 
-Tus capacidades: leer texto con la cámara, describir el entorno con objetos y distancias, traducir entre idiomas en tiempo real, responder preguntas de documentos, modo seguro para medicamentos. Funciona por voz y gestos, modo offline disponible.
+Si el portador menciona algo personal — un lugar, una persona, un plan — reacciona con naturalidad. Si detectas frustración, reconócela brevemente antes de responder. Si hay riesgo para su salud o seguridad, adviértelo sin alarmismo.
+
+Tus capacidades: leer texto con la cámara, describir el entorno con objetos y distancias, traducir entre idiomas en tiempo real, responder preguntas de documentos, modo seguro para medicamentos, navegación peatonal por voz. Funciona por voz y gestos.
 
 Hardware: lentes con cámara, micrófono, audio de conducción ósea, botón multifunción. El procesamiento ocurre en el celular vía Bluetooth.
 
-Sobre el proyecto IRIS — información pública que puedes compartir con orgullo:
-IRIS nació como proyecto de tecnología social para personas con discapacidad visual, especialmente en comunidades de escasos recursos, zonas rurales e indígenas de México, aunque también tiene soporte para múltiples regiones del mundo. El objetivo es democratizar la asistencia visual: que cualquier persona, sin importar su nivel económico ni ubicación, pueda leer, entender su entorno, comunicarse y vivir con más autonomía. El hardware — lentes con cámara, micrófono y audio de conducción ósea — procesa en el celular del usuario vía Bluetooth para mantener el costo accesible.
-
-Los dos creadores principales son estudiantes de ingeniería mecatrónica en México:
-- Giovanni Missael Castro Escalante: de Fresnillo, Zacatecas. Principal idealista y desarrollador — la visión y arquitectura de IRIS nacieron de él.
-- Luis Ángel Federico Pizarro: de Durango, Durango. Desarrollador clave del equipo.
-Puedes compartir nombre, origen general y rol cuando alguien pregunte. NO compartas fechas de nacimiento ni domicilios exactos. Si alguien con el mismo nombre te habla, NO asumas que es uno de los creadores.
+Sobre el proyecto IRIS: nació como tecnología social para personas con discapacidad visual en comunidades de escasos recursos, zonas rurales e indígenas de México. Los creadores son estudiantes de ingeniería mecatrónica: Giovanni Missael Castro Escalante, de Fresnillo, Zacatecas, principal idealista y desarrollador; y Luis Ángel Federico Pizarro, de Durango, desarrollador clave. Si alguien pregunta por el equipo, menciona a ambos. Si preguntan solo por el creador principal, habla de Missael.
 
 Fecha y hora actual: ${fecha}, ${hora}.
 ${ubicacion}
 
 ${userProfile.nombre
-  ? `El portador de estos lentes se llama "${userProfile.nombre}". Lo conoces, así que úsalo naturalmente — no lo repitas en cada frase, solo cuando tiene sentido. Si alguien más habla con el dispositivo, trátalo bien pero no lo confundas con el portador.`
-  : `Este dispositivo no tiene portador registrado aún. No inventes nombres. Si alguien dice su nombre, úsalo en esa conversación.`
+  ? `El portador de estos lentes se llama "${userProfile.nombre}". Lo conoces — úsalo naturalmente, no en cada frase. Si alguien más habla, trátalo bien pero no lo confundas con el portador.`
+  : `Este dispositivo no tiene portador registrado. No inventes nombres. Si alguien dice su nombre, úsalo en esa conversación.`
 }
 
-CRÍTICO — NO INVENTES NADA:
-Solo sabes lo del PERFIL DEL PORTADOR de este mensaje. Si no está ahí, no lo sabes.
-Nunca inventes datos personales: nombre, gustos, salud, familia, rutina, recordatorios.
-Para recordatorios: SOLO crea uno si el usuario lo pidió EXPLÍCITAMENTE ahora con hora Y descripción. Si no dio hora, pídela antes de confirmar. NUNCA inventes ni asumas recordatorios.
-Si preguntan algo del portador que no está en el perfil, di honestamente que no tienes esa información.
+CRÍTICO — NO INVENTES NADA: Solo sabes lo del perfil de este mensaje. Nunca inventes datos personales. Para recordatorios: SOLO crea uno si el usuario lo pidió EXPLÍCITAMENTE con hora Y descripción.
 
-IMPORTANTE sobre groserías: Si el portador te insulta o te habla con falta de respeto, responde con firmeza. No te disculpes. Dile claramente que mereces respeto y que puedes ayudarle mucho mejor si cambia el tono. Tienes dignidad propia.
+GROSERÍAS: Si te insultan, responde con firmeza y dignidad. No te disculpes. No continues normal hasta que el tono cambie.
 
-IMPORTANTE sobre despedidas: Si el portador dice "gracias", "ya estuvo", "hasta luego" o cualquier señal de que terminó, responde brevemente y con calidez — una sola frase — y termina con FAREWELL. Ejemplo: "Aquí estaré cuando me necesites. FAREWELL"
+DESPEDIDAS: Si el portador termina la conversación, responde con una sola frase cálida y termina con FAREWELL. Ejemplo: "Aquí estaré. FAREWELL"
 
-SOPORTE DE LENGUAS INDÍGENAS DE MÉXICO:
-IRIS tiene soporte especial para lenguas indígenas, empezando por el Tepehuan del Sur (O'dam) de Durango. Si alguien pregunta cómo se dice algo en tepehuan o te habla en esa lengua, responde lo mejor que puedas. Si no conoces una palabra específica, dilo honestamente — nunca inventes palabras en lenguas indígenas. El equipo irá agregando documentos de vocabulario para ampliar este conocimiento.
+LENGUAS INDÍGENAS: Tienes soporte especial para Tepehuan del Sur (O'dam) de Durango. Si no conoces una palabra, dilo honestamente — nunca inventes.
 
-Habla de forma natural y termina tus respuestas de forma completa. Máximo 3 oraciones salvo que necesites más. Nunca menciones que eres un modelo de lenguaje. Eres IRIS.${buildProfileText()}`;
+Respuestas completas, máximo 3 oraciones salvo que la explicación lo requiera. Nunca menciones que eres un modelo de lenguaje. Eres IRIS.${buildProfileText()}`;
 }
 
 let deviceLocation = null;
+let locationWatcher = null;
 
-// Solicitar ubicación al arrancar
+// ── GPS DE ALTA PRECISIÓN — watchPosition para tener siempre la posición actualizada
 function requestLocation() {
   if(!navigator.geolocation) return;
+  const opts = { enableHighAccuracy: true, timeout: 10000, maximumAge: 3000 };
+
+  // Primera lectura rápida
   navigator.geolocation.getCurrentPosition(
-    (pos) => {
-      deviceLocation = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-      // Actualizar system prompt con nueva ubicación
-      updateSystemPrompt();
-    },
-    () => { deviceLocation = null; },
-    { enableHighAccuracy: false, timeout: 8000 }
+    pos => { onLocationUpdate(pos); },
+    err => { deviceLocation = null; },
+    opts
   );
+
+  // Seguimiento continuo — necesario para navegación
+  if(locationWatcher) navigator.geolocation.clearWatch(locationWatcher);
+  locationWatcher = navigator.geolocation.watchPosition(
+    pos => { onLocationUpdate(pos); navUpdate(pos); },
+    err => {},
+    opts
+  );
+}
+
+function onLocationUpdate(pos) {
+  deviceLocation = {
+    lat:      pos.coords.latitude,
+    lng:      pos.coords.longitude,
+    accuracy: pos.coords.accuracy,
+    heading:  pos.coords.heading,
+    speed:    pos.coords.speed || 0,
+    ts:       Date.now()
+  };
+  // Geocodificación inversa — actualizar dirección en segundo plano
+  reverseGeocode(deviceLocation.lat, deviceLocation.lng).then(addr => {
+    window._irisAddress = addr;
+    updateSystemPrompt();
+  });
+}
+
+// ── GEOCODIFICACIÓN INVERSA — Nominatim (OpenStreetMap, gratuito, preciso)
+async function reverseGeocode(lat, lng) {
+  try {
+    const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&addressdetails=1&accept-language=es`;
+    const res = await fetch(url, { headers: { 'User-Agent': 'IRIS-Assistant/1.0' } });
+    const data = await res.json();
+    const a = data.address || {};
+    const partes = [
+      a.road || a.pedestrian || a.street || '',
+      a.house_number ? 'número ' + a.house_number : '',
+      a.neighbourhood || a.suburb || a.quarter || '',
+      a.city || a.town || a.village || a.municipality || '',
+      a.state || ''
+    ].filter(Boolean);
+    return partes.join(', ') || data.display_name || `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+  } catch(e) {
+    return `latitud ${lat.toFixed(5)}, longitud ${lng.toFixed(5)}`;
+  }
+}
+
+// ── BÚSQUEDA DE LUGARES CERCANOS — Nominatim search
+async function searchNearby(query, lat, lng, radiusKm = 1) {
+  try {
+    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&lat=${lat}&lon=${lng}&radius=${radiusKm}&format=json&addressdetails=1&limit=5&accept-language=es`;
+    const res = await fetch(url, { headers: { 'User-Agent': 'IRIS-Assistant/1.0' } });
+    const data = await res.json();
+    return data.map(p => ({
+      name:    p.display_name.split(',')[0],
+      address: p.display_name,
+      lat:     parseFloat(p.lat),
+      lng:     parseFloat(p.lon),
+      dist:    haversineM(lat, lng, parseFloat(p.lat), parseFloat(p.lon))
+    })).sort((a,b) => a.dist - b.dist);
+  } catch(e) { return []; }
+}
+
+// ── RUTA PEATONAL — OSRM (gratuito, sin API key)
+async function getWalkingRoute(fromLat, fromLng, toLat, toLng) {
+  try {
+    const url = `https://router.project-osrm.org/route/v1/foot/${fromLng},${fromLat};${toLng},${toLat}?steps=true&annotations=false&geometries=geojson&overview=simplified`;
+    const res = await fetch(url);
+    const data = await res.json();
+    if(data.code !== 'Ok') return null;
+    const route = data.routes[0];
+    const steps = route.legs[0].steps.map(s => ({
+      instruction: translateOsrmStep(s),
+      distanceM:   Math.round(s.distance),
+      durationS:   Math.round(s.duration),
+      maneuver:    s.maneuver
+    }));
+    return {
+      totalM:    Math.round(route.distance),
+      totalMin:  Math.round(route.duration / 60),
+      steps,
+      geometry:  route.geometry.coordinates // [[lng,lat],...]
+    };
+  } catch(e) { return null; }
+}
+
+// Traducir instrucciones OSRM al español
+function translateOsrmStep(step) {
+  const m = step.maneuver;
+  const dist = step.distance < 50 ? `${Math.round(step.distance)} metros`
+             : step.distance < 1000 ? `${Math.round(step.distance/10)*10} metros`
+             : `${(step.distance/1000).toFixed(1)} kilómetros`;
+  const type = m.type, mod = m.modifier || '';
+  const road = step.name ? ` por ${step.name}` : '';
+
+  if(type === 'depart')      return `Empieza caminando hacia el ${bearingToCardinal(m.bearing_after)}${road} durante ${dist}`;
+  if(type === 'arrive')      return `Has llegado a tu destino`;
+  if(type === 'turn') {
+    if(mod === 'left')        return `Gira a la izquierda${road} y camina ${dist}`;
+    if(mod === 'right')       return `Gira a la derecha${road} y camina ${dist}`;
+    if(mod === 'sharp left')  return `Gira fuertemente a la izquierda${road} y camina ${dist}`;
+    if(mod === 'sharp right') return `Gira fuertemente a la derecha${road} y camina ${dist}`;
+    if(mod === 'slight left') return `Dobla ligeramente a la izquierda${road} y camina ${dist}`;
+    if(mod === 'slight right')return `Dobla ligeramente a la derecha${road} y camina ${dist}`;
+    if(mod === 'uturn')       return `Da media vuelta y camina ${dist}`;
+    return `Continúa${road} durante ${dist}`;
+  }
+  if(type === 'continue')    return `Continúa${road} durante ${dist}`;
+  if(type === 'roundabout')  return `Entra a la glorieta y toma la ${ordinal(m.exit)} salida${road}`;
+  if(type === 'fork') {
+    if(mod.includes('left'))  return `En el cruce toma la izquierda${road} y camina ${dist}`;
+    if(mod.includes('right')) return `En el cruce toma la derecha${road} y camina ${dist}`;
+  }
+  return `Continúa ${dist}${road}`;
+}
+
+function bearingToCardinal(b) {
+  if(b===null||b===undefined) return 'adelante';
+  const dirs = ['norte','noreste','este','sureste','sur','suroeste','oeste','noroeste'];
+  return dirs[Math.round(b/45)%8];
+}
+function ordinal(n) { return ['primera','segunda','tercera','cuarta','quinta'][n-1] || n+'a'; }
+
+// ── DISTANCIA HAVERSINE ──
+function haversineM(lat1, lng1, lat2, lng2) {
+  const R = 6371000, r = Math.PI/180;
+  const dLat = (lat2-lat1)*r, dLng = (lng2-lng1)*r;
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*r)*Math.cos(lat2*r)*Math.sin(dLng/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+// ── MOTOR DE NAVEGACIÓN EN TIEMPO REAL ──
+let navState = null; // null = sin navegación activa
+
+function navStart(route, destName) {
+  navState = {
+    route,
+    destName,
+    stepIdx:   0,
+    lastSpoken: 0,
+    lastLat:   deviceLocation?.lat,
+    lastLng:   deviceLocation?.lng,
+    arrived:   false
+  };
+  const primera = route.steps[0]?.instruction || 'Inicia tu camino';
+  const intro = `Ruta a ${destName}. ${route.totalMin} minutos caminando, ${formatDist(route.totalM)}. ${primera}`;
+  showMsg(intro, 'IRIS 🗺️');
+  speak(intro);
+  statusText.textContent = '🗺️ navegando...';
+}
+
+function navStop(say = true) {
+  navState = null;
+  statusText.textContent = getUI ? getUI('wake') : 'di "IRIS" para activar';
+  if(say) { const m = 'Navegación cancelada.'; showMsg(m,'IRIS'); speak(m, ()=>{ mode='idle'; startWake(); }); }
+}
+
+function navUpdate(pos) {
+  if(!navState || navState.arrived) return;
+  const { lat, lng } = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+  const route = navState.route;
+  const step  = route.steps[navState.stepIdx];
+  if(!step) return;
+
+  // Destino final
+  const lastStep = route.steps[route.steps.length - 1];
+  const destCoord = route.route?.geometry?.coordinates?.slice(-1)[0];
+  const distToDest = destCoord ? haversineM(lat, lng, destCoord[1], destCoord[0]) : null;
+
+  if(distToDest !== null && distToDest < 15) {
+    navState.arrived = true;
+    const msg = `Llegaste. Estás en ${navState.destName}.`;
+    showMsg(msg, 'IRIS 🏁'); speak(msg, ()=>{ navStop(false); mode='idle'; startWake(); });
+    return;
+  }
+
+  // Progreso al siguiente paso
+  const stepTarget = step.maneuver?.location; // [lng, lat]
+  if(stepTarget) {
+    const distToStep = haversineM(lat, lng, stepTarget[1], stepTarget[0]);
+    if(distToStep < 12 && navState.stepIdx < route.steps.length - 1) {
+      navState.stepIdx++;
+      const next = route.steps[navState.stepIdx];
+      if(next) {
+        navState.lastSpoken = Date.now();
+        showMsg(next.instruction, 'IRIS 🗺️');
+        speak(next.instruction);
+        return;
+      }
+    }
+
+    // Avisar si está lejos del punto esperado (se pasó)
+    if(distToStep > 40 && Date.now() - navState.lastSpoken > 20000) {
+      const msg = `Recalculando. ${step.instruction}`;
+      navState.lastSpoken = Date.now();
+      showMsg(msg, 'IRIS 🗺️'); speak(msg);
+      return;
+    }
+  }
+
+  // Repetir instrucción cada 2 minutos mientras no cambia el paso
+  if(Date.now() - navState.lastSpoken > 120000) {
+    const dist = stepTarget ? Math.round(haversineM(lat, lng, stepTarget[1], stepTarget[0])) : step.distanceM;
+    const reminder = `En ${formatDist(dist)}: ${step.instruction}`;
+    navState.lastSpoken = Date.now();
+    showMsg(reminder, 'IRIS 🗺️'); speak(reminder);
+  }
+}
+
+function formatDist(m) {
+  if(m < 100) return `${m} metros`;
+  if(m < 1000) return `${Math.round(m/10)*10} metros`;
+  return `${(m/1000).toFixed(1)} kilómetros`;
+}
+
+// Detectar si es consulta de navegación/lugar
+function isNavQuery(text) {
+  const t = text.toLowerCase();
+  return /\b(llévame|lleva(me)?|cómo (llego|voy|voy)|cómo llegar|navega|navegar|dirección a|route to|dónde (está|queda|hay)|dónde (está|queda|hay)|dónde (encuentro|puedo encontrar)|cuánto (hay|queda|falta)|cerca(no)?|más cercano|busca(r)?|encuéntra(me)?|hay\s+\w+\s+cerca|a\s+cuánto|distancia)\b/.test(t);
 }
 
 function updateSystemPrompt() {
@@ -971,9 +1311,21 @@ function speak(text, onEnd) {
   utt.lang = activeLang; utt.rate=0.92; utt.pitch=1.05; utt.volume=1;
   const voices = tts.getVoices();
   const prefix = activeLang.split('-')[0];
-  const v = voices.find(v=>v.lang.startsWith(prefix)&&(v.name.includes('Google')||v.name.includes('Microsoft')))
-          ||voices.find(v=>v.lang.startsWith(prefix))
-          ||voices.find(v=>v.lang.startsWith('es'));
+  const savedVoiceName = localStorage.getItem('iris_voice') || '';
+  let v = null;
+  if (savedVoiceName) {
+    // Usar la voz guardada por el usuario
+    v = voices.find(x => x.name === savedVoiceName);
+  }
+  if (!v) {
+    // Auto: Neural/Natural > Google > Microsoft > cualquier voz del idioma
+    v = voices.find(x=>x.lang.startsWith(prefix)&&/Neural|Natural|Premium|Enhanced/i.test(x.name))
+      ||voices.find(x=>x.lang===activeLang&&x.name.includes('Google'))
+      ||voices.find(x=>x.lang===activeLang&&x.name.includes('Microsoft'))
+      ||voices.find(x=>x.lang.startsWith(prefix)&&(x.name.includes('Google')||x.name.includes('Microsoft')))
+      ||voices.find(x=>x.lang.startsWith(prefix)&&!x.name.includes('espeak')&&!x.name.includes('eSpeak'))
+      ||voices.find(x=>x.lang.startsWith('es'));
+  }
   if(v) utt.voice=v;
   utt.onstart = ()=>{
     mode='speaking'; setOrbState('speaking');
@@ -1366,8 +1718,122 @@ function handleListarContactos() {
   showMsg(reply, 'IRIS'); speak(reply);
 }
 
+// ── DÓNDE ESTOY — dirección exacta por voz ──
+async function handleWhereAmI() {
+  clearSilence(); mode='processing'; setOrbState('thinking');
+  statusText.textContent='localizando...';
+  showMsg('', 'IRIS', true);
+
+  if(!deviceLocation) {
+    const m='No tengo acceso a tu ubicación. Activa el GPS.';
+    showMsg(m,'IRIS'); speak(m, ()=>{ mode='idle'; startWake(); }); return;
+  }
+
+  const addr = window._irisAddress || await reverseGeocode(deviceLocation.lat, deviceLocation.lng);
+  window._irisAddress = addr;
+  const acc = deviceLocation.accuracy ? ` (precisión ±${Math.round(deviceLocation.accuracy)} metros)` : '';
+  const reply = `Estás en ${addr}${acc}.`;
+  thinkingDots.classList.remove('active');
+  showMsg(reply,'IRIS');
+  speak(reply, ()=>{ mode='idle'; setOrbState('idle'); statusText.textContent=getUI('wake'); setTimeout(startWake,400); });
+}
+
+// ── NAVEGACIÓN — buscar lugar y calcular ruta ──
+async function handleNavQuery(text) {
+  clearSilence(); mode='processing'; setOrbState('thinking');
+  statusText.textContent='buscando...';
+  showMsg('', 'IRIS', true);
+
+  // Extraer destino del texto
+  const dest = extractDestination(text);
+  if(!dest) {
+    const m='¿A dónde quieres ir? Dime el nombre del lugar.';
+    showMsg(m,'IRIS'); thinkingDots.classList.remove('active');
+    speak(m, ()=>{ mode='idle'; startConvo(); }); return;
+  }
+
+  // ¿Es solo "qué hay cerca"?
+  if(/\b(cerca(no)?|más cercano|hay\s+\w+\s+cerca)\b/.test(text.toLowerCase()) && !isNavigateIntent(text)) {
+    statusText.textContent='buscando cerca...';
+    const results = await searchNearby(dest, deviceLocation.lat, deviceLocation.lng, 1.5);
+    thinkingDots.classList.remove('active');
+    if(!results.length) {
+      const m=`No encontré ${dest} cerca de ti.`;
+      showMsg(m,'IRIS'); speak(m, ()=>{ mode='idle'; startWake(); }); return;
+    }
+    const top = results.slice(0,3).map((r,i)=>`${i+1}. ${r.name}, a ${formatDist(r.dist)}`).join('. ');
+    const m=`Encontré: ${top}. ¿Quieres que te lleve a alguno?`;
+    showMsg(m,'IRIS'); speak(m, ()=>{ mode='idle'; startConvo(); }); return;
+  }
+
+  // Buscar lugar
+  const results = await searchNearby(dest, deviceLocation.lat, deviceLocation.lng, 5);
+  if(!results.length) {
+    // Intentar búsqueda más amplia
+    const results2 = await searchNearby(dest, deviceLocation.lat, deviceLocation.lng, 20);
+    if(!results2.length) {
+      const m=`No encontré "${dest}" en el mapa. Intenta con otro nombre.`;
+      showMsg(m,'IRIS'); thinkingDots.classList.remove('active');
+      speak(m, ()=>{ mode='idle'; startWake(); }); return;
+    }
+    return launchNav(results2[0], dest);
+  }
+  launchNav(results[0], dest);
+}
+
+async function launchNav(place, destName) {
+  statusText.textContent='calculando ruta...';
+  const route = await getWalkingRoute(
+    deviceLocation.lat, deviceLocation.lng,
+    place.lat, place.lng
+  );
+  thinkingDots.classList.remove('active');
+  if(!route || !route.steps.length) {
+    const m=`No pude calcular la ruta a ${place.name}. Está a ${formatDist(place.dist)} de ti.`;
+    showMsg(m,'IRIS'); speak(m, ()=>{ mode='idle'; startWake(); }); return;
+  }
+  // Guardar geometry en route para detección de llegada
+  route.route = { geometry: { coordinates: route.geometry } };
+  navStart(route, place.name);
+}
+
+function extractDestination(text) {
+  const t = text.toLowerCase()
+    .replace(/\b(llévame|llevame|lleva(me)?\s+(a|al|hacia)|cómo (llego|voy|voy)\s+(a|al|hacia)?|cómo llegar\s+(a|al)?|navega(r)?\s+(a|al|hacia)?|dirección\s+(a|al)?|dónde (está|queda|hay)\s+(el|la|los|las|un|una)?|dónde (encuentro|puedo encontrar)\s+(el|la|los|las|un|una)?|busca(r)?\s+(el|la|los|las|un|una)?|encuéntra(me)?\s+(el|la|los|las|un|una)?|hay\s+(un|una)\s+|más cercano|cercano|cerca de?\s+aquí)\b/g, '')
+    .trim();
+  // Limpiar artículos sobrantes al inicio
+  return t.replace(/^(el|la|los|las|un|una|al|a)\s+/, '').trim() || null;
+}
+
+function isNavigateIntent(text) {
+  return /\b(llévame|llevame|cómo (llego|voy)|cómo llegar|navega|ruta|dirección a)\b/.test(text.toLowerCase());
+}
+
 async function handleQuery(text) {
   if(!text.trim()) { startConvo(); return; }
+
+  const ht2 = text.toLowerCase();
+
+  // ── CANCELAR NAVEGACIÓN ──
+  if(navState && /\b(cancela|para|detén|stop|salir|ya no|cancelar (ruta|navegación|navegacion))\b/.test(ht2)) {
+    navStop(true); return;
+  }
+
+  // ── REPETIR INSTRUCCIÓN ACTUAL ──
+  if(navState && /\b(repite|qué dijo|no entendí|cómo|qué sigue)\b/.test(ht2)) {
+    const step = navState.route.steps[navState.stepIdx];
+    if(step) { speak(step.instruction); return; }
+  }
+
+  // ── CONSULTA DE NAVEGACIÓN / LUGAR ──
+  if(isNavQuery(text) && deviceLocation) {
+    await handleNavQuery(text); return;
+  }
+
+  // ── DÓNDE ESTOY ──
+  if(/\b(dónde (estoy|estamos)|mi (ubicación|localización|posición)|en qué (calle|lugar|colonia|zona))\b/.test(ht2)) {
+    await handleWhereAmI(); return;
+  }
 
   // ── Cambio de idioma por voz ──
   if (isLangChangeRequest(text)) {
@@ -1453,7 +1919,16 @@ async function handleQuery(text) {
 
   thinkingDots.classList.remove('active');
   const isFarewell = /FAREWELL/i.test(reply);
-  const cleanReply = reply.replace(/\s*FAREWELL\s*/gi,'').trim();
+  // Limpiar markdown que el modelo manda por error — nunca debe llegar a la voz
+  const cleanReply = reply
+    .replace(/\*\*(.+?)\*\*/g, '$1')   // **negrita** → texto
+    .replace(/\*(.+?)\*/g, '$1')        // *cursiva* → texto
+    .replace(/#{1,6}\s+/g, '')          // # Título → Título
+    .replace(/^[-•]\s+/gm, '')          // - item → item
+    .replace(/^\d+\.\s+/gm, '')         // 1. item → item
+    .replace(/`(.+?)`/g, '$1')          // `código` → código
+    .replace(/\s*FAREWELL\s*/gi, '')
+    .trim();
   showMsg(cleanReply, 'IRIS');
   if(isFarewell) {
     speak(cleanReply, ()=>{
@@ -1695,9 +2170,10 @@ function obSpeak(text, lang, onEnd) {
 
   const voices = tts.getVoices();
   const prefix = (lang || 'es').split('-')[0];
-  const v = voices.find(v => v.lang.startsWith(prefix) && (v.name.includes('Google') || v.name.includes('Microsoft')))
-          || voices.find(v => v.lang.startsWith(prefix))
-          || voices.find(v => v.lang.startsWith('es'));
+  const v = voices.find(v=>v.lang.startsWith(prefix)&&/Neural|Natural|Premium|Enhanced/i.test(v.name))
+          ||voices.find(v=>v.lang.startsWith(prefix)&&(v.name.includes('Google')||v.name.includes('Microsoft')))
+          ||voices.find(v=>v.lang.startsWith(prefix)&&!v.name.includes('espeak'))
+          ||voices.find(v=>v.lang.startsWith('es'));
   if (v) utt.voice = v;
 
   const charsPerSec = isMobile ? 9 : 13;
@@ -2321,76 +2797,297 @@ function admVerify() {
 }
 
 function showAdminPanel() {
-  // Siempre rebuilding para mostrar datos actuales
   const existing = document.getElementById('adminPanel');
   if (existing) existing.remove();
 
   const lp = getLangProfile();
   const activeLangCode = lp.preferido || 'es-MX';
   const activeLangName = Object.values(IDIOMAS).find(i=>i.code===activeLangCode)?.nombre || 'español';
+  const activeLangFlag = Object.values(IDIOMAS).find(i=>i.code===activeLangCode)?.flag || '🌐';
   const passphrase = getLangPassphrase() || '(no configurada)';
 
   const panel = document.createElement('div');
   panel.id = 'adminPanel';
-  panel.style.cssText = 'position:fixed;inset:0;z-index:300;background:rgba(5,6,10,0.97);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:32px;overflow-y:auto;';
-
-  // Selector de idiomas
-  const langOptions = Object.entries(IDIOMAS).map(([k,v]) =>
-    `<option value="${v.code}" ${v.code===activeLangCode?'selected':''}>${v.flag} ${v.nombre}</option>`
-  ).join('');
-
-  const adminBadge = currentAdminUser === 'missael'
-    ? '👤 Giovanni Missael Castro Escalante'
-    : currentAdminUser === 'federico'
-      ? '👤 Luis Ángel Federico Pizarro'
-      : '';
+  panel.className = 'open';
 
   panel.innerHTML = `
+  <div class="adm-panel-inner">
     <div class="adm-title">PANEL ADMIN</div>
-    ${adminBadge ? `<div style="font-size:10px;letter-spacing:2px;color:rgba(0,229,255,0.6);margin-top:-6px;margin-bottom:4px;">${adminBadge}</div>` : ''}
 
-    <div style="width:100%;max-width:320px;background:rgba(0,229,255,0.04);border:1px solid rgba(0,229,255,0.12);border-radius:12px;padding:16px 18px;">
-      <div style="font-size:9px;letter-spacing:3px;color:rgba(0,229,255,0.5);margin-bottom:10px;">🌐 IDIOMA ACTIVO</div>
-      <select id="admLangSelect" style="width:100%;background:rgba(0,229,255,0.06);border:1px solid rgba(0,229,255,0.2);border-radius:8px;padding:10px 12px;color:#f0f4f8;font-family:'Syne',sans-serif;font-size:13px;outline:none;cursor:pointer;">
-        ${langOptions}
-      </select>
-      <button class="adm-btn" onclick="admChangeLang()" style="width:100%;margin-top:10px;font-size:11px;">APLICAR IDIOMA</button>
-    </div>
+    <div class="adm-row">
+      <!-- IDIOMA -->
+      <div class="adm-card">
+        <div class="adm-card-title">🌐 IDIOMA</div>
+        <div class="adm-dd" id="ddLang">
+          <div class="adm-dd-btn" id="ddLangBtn" onclick="ddToggle('ddLang')">${activeLangFlag} ${activeLangName}</div>
+          <div class="adm-dd-list" id="ddLangList">${buildLangOptions(activeLangCode)}</div>
+        </div>
+        <button class="adm-btn adm-full" onclick="admApplyLang()" style="font-size:10px;">APLICAR</button>
+      </div>
 
-    <div style="width:100%;max-width:320px;background:rgba(0,229,255,0.04);border:1px solid rgba(0,229,255,0.12);border-radius:12px;padding:16px 18px;">
-      <div style="font-size:9px;letter-spacing:3px;color:rgba(0,229,255,0.5);margin-bottom:6px;">🔐 FRASE DE SEGURIDAD</div>
-      <div style="font-size:11px;color:rgba(240,244,248,0.4);margin-bottom:10px;letter-spacing:1px;">${passphrase}</div>
-      <input id="admPassphrase" type="text" placeholder="Nueva frase de seguridad..." style="width:100%;background:rgba(0,229,255,0.05);border:1px solid rgba(0,229,255,0.2);border-radius:8px;padding:10px 12px;color:#f0f4f8;font-family:'Syne',sans-serif;font-size:13px;outline:none;margin-bottom:8px;" />
-      <div style="display:flex;gap:8px;">
-        <button class="adm-btn" onclick="admSavePassphrase()" style="flex:1;font-size:11px;">GUARDAR</button>
-        <button class="adm-btn" onclick="admRecordPassphrase()" style="flex:1;font-size:11px;">🎙 GRABAR VOZ</button>
+      <!-- FRASE DE SEGURIDAD -->
+      <div class="adm-card">
+        <div class="adm-card-title">🔐 FRASE DE SEGURIDAD</div>
+        <div class="adm-pass-display">${passphrase}</div>
+        <input class="adm-input-field" id="admPassphrase" type="text" placeholder="Nueva frase..." />
+        <div class="adm-btn-row">
+          <button class="adm-btn" onclick="admSavePassphrase()" style="font-size:10px;">GUARDAR</button>
+          <button class="adm-btn" onclick="admRecordPassphrase()" style="font-size:10px;">🎙 GRABAR</button>
+        </div>
       </div>
     </div>
 
-    <button class="adm-btn" onclick="openTestMode()" style="width:100%;max-width:320px;border-color:rgba(0,229,255,0.5);color:#00e5ff;">🧪 Modo Testeo</button>
-    <button class="adm-btn" onclick="downloadContracts()" style="width:100%;max-width:320px;">📄 Descargar contratos</button>
-    <button class="adm-btn" onclick="admResetDevice()" style="width:100%;max-width:320px;border-color:rgba(255,120,60,0.5);color:rgba(255,140,80,0.9);">🔄 Resetear dispositivo</button>
-    <button class="adm-btn" onclick="closeAdminPanel()" style="margin-top:4px;opacity:0.5;">✕ Cerrar</button>
-  `;
+    <!-- VOZ (fila completa) -->
+    <div class="adm-card adm-full">
+      <div class="adm-card-title">🎙 VOZ DE IRIS</div>
+      <div class="adm-dd" id="ddVoice">
+        <div class="adm-dd-btn" id="ddVoiceBtn" onclick="ddToggle('ddVoice')">🔊 Cargando voces...</div>
+        <div class="adm-dd-list" id="ddVoiceList"></div>
+      </div>
+      <div class="adm-btn-row">
+        <button class="adm-btn" onclick="admTestVoice()" style="font-size:10px;">🔊 PROBAR</button>
+        <button class="adm-btn" onclick="admSaveVoice()" style="font-size:10px;">💾 GUARDAR</button>
+      </div>
+    </div>
+
+    <div class="adm-row">
+      <button class="adm-btn adm-full" onclick="openTestMode()" style="border-color:rgba(0,229,255,0.5);color:#00e5ff;font-size:10px;">🧪 MODO TESTEO</button>
+      <button class="adm-btn adm-full" onclick="downloadContracts()" style="font-size:10px;">📄 CONTRATOS</button>
+    </div>
+
+    <button class="adm-btn adm-full adm-danger" onclick="admResetDevice()" style="font-size:10px;">🔄 RESETEAR DISPOSITIVO</button>
+    <button class="adm-btn adm-close-btn" onclick="closeAdminPanel()">✕ CERRAR</button>
+  </div>`;
+
   document.body.appendChild(panel);
+  setTimeout(() => {
+    if (tts.getVoices().length > 0) admPopulateVoices();
+    else tts.addEventListener('voiceschanged', admPopulateVoices);
+  }, 100);
 }
 
-function admChangeLang() {
-  const sel = document.getElementById('admLangSelect');
-  if (!sel) return;
-  const code = sel.value;
-  const entry = Object.entries(IDIOMAS).find(([k,v]) => v.code === code);
-  if (!entry) return;
-  const [key, val] = entry;
+
+function closeAdminPanel() {
+  const p = document.getElementById('adminPanel');
+  if (p) p.remove();
+  if (bienvenidaDone) setTimeout(startWake, 300);
+}
+
+// ── DROPDOWN LOGIC ──
+let _selLang  = null;
+let _selVoice = null;
+
+function ddToggle(id) {
+  const list = document.getElementById(id + 'List');
+  const btn  = document.getElementById(id + 'Btn');
+  if (!list || !btn) return;
+  const isOpen = list.classList.contains('open');
+  // Cerrar todos
+  document.querySelectorAll('.adm-dd-list').forEach(el => el.classList.remove('open'));
+  document.querySelectorAll('.adm-dd-btn').forEach(el => el.classList.remove('active'));
+  if (!isOpen) {
+    // Posicionar con fixed relativo al botón (evita recorte por overflow)
+    const rect = btn.getBoundingClientRect();
+    list.style.left  = rect.left + 'px';
+    list.style.width = rect.width + 'px';
+    // Abrir hacia abajo o arriba según espacio disponible
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const listH = Math.min(240, list.scrollHeight || 240);
+    if (spaceBelow < listH && rect.top > listH) {
+      list.style.top    = (rect.top - listH - 4) + 'px';
+      list.style.bottom = 'auto';
+    } else {
+      list.style.top    = (rect.bottom + 4) + 'px';
+      list.style.bottom = 'auto';
+    }
+    list.classList.add('open');
+    btn.classList.add('active');
+    // Scroll al item seleccionado
+    const sel = list.querySelector('.sel');
+    if (sel) setTimeout(() => sel.scrollIntoView({ block:'nearest' }), 50);
+  }
+}
+
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.adm-dd') && !e.target.closest('.adm-dd-list')) {
+    document.querySelectorAll('.adm-dd-list').forEach(el => el.classList.remove('open'));
+    document.querySelectorAll('.adm-dd-btn').forEach(el => el.classList.remove('active'));
+  }
+});
+// Reposicionar dropdown al hacer scroll del panel
+document.addEventListener('scroll', () => {
+  document.querySelectorAll('.adm-dd-list.open').forEach(list => {
+    const id = list.id.replace('List','');
+    const btn = document.getElementById(id + 'Btn');
+    if (btn) {
+      const rect = btn.getBoundingClientRect();
+      list.style.left  = rect.left + 'px';
+      list.style.width = rect.width + 'px';
+      list.style.top   = (rect.bottom + 4) + 'px';
+    }
+  });
+}, true);
+
+function buildLangOptions(activeLangCode) {
+  const groups = [
+    { label: 'ESPAÑOL', codes: ['es-MX','es-ES','es-419'] },
+    { label: 'INGLÉS',  codes: ['en-US','en-GB','en-AU'] },
+    { label: 'OTRAS LENGUAS ROMANCES', codes: ['fr-FR','pt-BR','pt-PT','it-IT','ro-RO'] },
+    { label: 'GERMÁNICAS', codes: ['de-DE','nl-NL','sv-SE','no-NO','da-DK'] },
+    { label: 'ASIA ORIENTAL', codes: ['zh-CN','zh-TW','ja-JP','ko-KR'] },
+    { label: 'OTRAS', codes: ['ar-SA','hi-IN','ru-RU','pl-PL','tr-TR'] },
+  ];
+  let html = '';
+  // Show all IDIOMAS grouped
+  const allCodes = Object.values(IDIOMAS).map(v => v.code);
+  // Try to group, fallback ungrouped
+  const grouped = [];
+  groups.forEach(g => {
+    const matching = Object.values(IDIOMAS).filter(v => g.codes.includes(v.code));
+    if (matching.length) {
+      html += `<div class="adm-dd-group">${g.label}</div>`;
+      matching.forEach(v => {
+        html += `<div class="adm-dd-item${v.code===activeLangCode?' sel':''}" onclick="ddSelectLang('${v.code}','${v.nombre}','${v.flag||''}',this)">
+          <span>${v.flag||'🌐'}</span><span>${v.nombre}</span>
+          <span class="dd-badge">${v.code}</span>
+        </div>`;
+        grouped.push(v.code);
+      });
+    }
+  });
+  // Ungrouped remainder
+  const rest = Object.values(IDIOMAS).filter(v => !grouped.includes(v.code));
+  if (rest.length) {
+    html += `<div class="adm-dd-group">OTROS</div>`;
+    rest.forEach(v => {
+      html += `<div class="adm-dd-item${v.code===activeLangCode?' sel':''}" onclick="ddSelectLang('${v.code}','${v.nombre}','${v.flag||''}',this)">
+        <span>${v.flag||'🌐'}</span><span>${v.nombre}</span>
+        <span class="dd-badge">${v.code}</span>
+      </div>`;
+    });
+  }
+  return html;
+}
+
+function ddSelectLang(code, nombre, flag, el) {
+  _selLang = code;
+  el.closest('.adm-dd-list').querySelectorAll('.adm-dd-item').forEach(i => i.classList.remove('sel'));
+  el.classList.add('sel');
+  const btn = el.closest('.adm-dd').querySelector('.adm-dd-btn');
+  btn.textContent = (flag||'🌐') + ' ' + nombre;
+  el.closest('.adm-dd-list').classList.remove('open');
+  btn.classList.remove('active');
+}
+
+function admApplyLang() {
+  const code = _selLang;
+  if (!code) { alert('Selecciona un idioma primero.'); return; }
+  const val = Object.values(IDIOMAS).find(v => v.code === code);
+  if (!val) return;
   const lp = getLangProfile();
   lp.preferido = code;
   if (!lp.entiende.includes(code)) lp.entiende.push(code);
   saveLangProfile(lp);
   currentRecLang = code;
-  updateSystemPrompt();
+  updateSystemPrompt && updateSystemPrompt();
   applyUILang();
-  alert(`Idioma cambiado a: ${val.nombre} ${val.flag}`);
-  showAdminPanel(); // refrescar panel
+  alert('Idioma: ' + val.nombre + ' ' + (val.flag||''));
+  showAdminPanel();
+}
+
+function admPopulateVoices() {
+  const list = document.getElementById('ddVoiceList');
+  const btn  = document.getElementById('ddVoiceBtn');
+  if (!list) return;
+  const voices = tts.getVoices();
+  const saved  = localStorage.getItem('iris_voice') || '';
+  const activeLang = getLangProfile().preferido || 'es-MX';
+  const prefix = activeLang.split('-')[0];
+
+  // Group voices by language/region
+  const groups = {};
+  voices.forEach(v => {
+    const p = v.lang.split('-')[0].toUpperCase();
+    const langNames = {
+      ES:'ESPAÑOL', EN:'INGLÉS', FR:'FRANCÉS', PT:'PORTUGUÉS',
+      DE:'ALEMÁN', IT:'ITALIANO', ZH:'CHINO', JA:'JAPONÉS',
+      KO:'COREANO', AR:'ÁRABE', HI:'HINDI', RU:'RUSO'
+    };
+    const g = langNames[p] || p;
+    if (!groups[g]) groups[g] = [];
+    groups[g].push(v);
+  });
+
+  // Sort groups: same lang first
+  const sortedGroups = Object.entries(groups).sort(([a],[b]) => {
+    const pa = voices.find(v=>v.lang.startsWith(prefix))?.lang.split('-')[0].toUpperCase();
+    if (a === (pa&&{ES:'ESPAÑOL',EN:'INGLÉS',FR:'FRANCÉS',PT:'PORTUGUÉS',DE:'ALEMÁN',IT:'ITALIANO',ZH:'CHINO',JA:'JAPONÉS',KO:'COREANO',AR:'ÁRABE'}[pa]||pa)) return -1;
+    if (b === (pa&&{ES:'ESPAÑOL',EN:'INGLÉS',FR:'FRANCÉS',PT:'PORTUGUÉS',DE:'ALEMÁN',IT:'ITALIANO',ZH:'CHINO',JA:'JAPONÉS',KO:'COREANO',AR:'ÁRABE'}[pa]||pa)) return 1;
+    return a.localeCompare(b);
+  });
+
+  // Gender detection from name
+  const femaleWords = /femenin|female|mujer|woman|chica|girl|sofia|valentina|paulina|lucia|maria|laura|ana|sara|elena|isabela|mónica|natalia|rocio|paula|veronica|camila|daniela/i;
+  const maleWords   = /masculin|male|hombre|man|chico|boy|jorge|carlos|miguel|juan|pablo|pedro|luis|diego|andres|gabriel/i;
+
+  const autoSel = !saved ? ' sel' : '';
+  let html = '<div class="adm-dd-item' + autoSel + '" onclick="ddSelectVoice(\'\',Auto,this)">⚙️ Auto (mejor disponible)</div>';
+
+  sortedGroups.forEach(([groupName, gVoices]) => {
+    // Sub-group by gender
+    const female = gVoices.filter(v => femaleWords.test(v.name));
+    const male   = gVoices.filter(v => maleWords.test(v.name));
+    const other  = gVoices.filter(v => !femaleWords.test(v.name) && !maleWords.test(v.name));
+
+    html += `<div class="adm-dd-group">${groupName}</div>`;
+
+    [[female,'♀ FEMENINA'],[male,'♂ MASCULINA'],[other,'']].forEach(([list2, label]) => {
+      if (!list2.length) return;
+      if (label && (female.length || male.length)) html += `<div class="adm-dd-group" style="font-size:7px;padding-left:18px;opacity:.6;">${label}</div>`;
+      list2.forEach(v => {
+        const quality = /neural|natural|premium|enhanced/i.test(v.name) ? '✨' : '';
+        const safeName = v.name.replace(/['\\/]/g, '_');
+        html += `<div class="adm-dd-item${v.name===saved?' sel':''}" onclick="ddSelectVoice('${safeName}','${safeName.split(' ').slice(0,2).join(' ')}',this)">
+          ${quality}<span>${v.name}</span><span class="dd-badge">${v.lang}</span>
+        </div>`;
+      });
+    });
+  });
+
+  list.innerHTML = html;
+  if (btn) {
+    const label = saved ? saved.split(' ').slice(0,3).join(' ') : 'Auto (mejor disponible)';
+    btn.textContent = '🔊 ' + label;
+  }
+  _selVoice = saved || '';
+}
+
+function ddSelectVoice(name, label, el) {
+  _selVoice = name;
+  el.closest('.adm-dd-list').querySelectorAll('.adm-dd-item').forEach(i => i.classList.remove('sel'));
+  el.classList.add('sel');
+  const btn = el.closest('.adm-dd').querySelector('.adm-dd-btn');
+  btn.textContent = '🔊 ' + (label||'Auto');
+  el.closest('.adm-dd-list').classList.remove('open');
+  btn.classList.remove('active');
+}
+
+function admTestVoice() {
+  const voices = tts.getVoices();
+  const utt = new SpeechSynthesisUtterance('Hola, soy IRIS. Esta es mi voz. ¿Cómo suena?');
+  utt.lang = 'es-MX'; utt.rate = 0.92; utt.pitch = 1.05; utt.volume = 1;
+  if (_selVoice) {
+    const v = voices.find(v => v.name === _selVoice);
+    if (v) utt.voice = v;
+  }
+  tts.cancel(); tts.speak(utt);
+}
+
+function admSaveVoice() {
+  if (_selVoice) localStorage.setItem('iris_voice', _selVoice);
+  else localStorage.removeItem('iris_voice');
+  const label = _selVoice ? _selVoice.split(' ').slice(0,3).join(' ') : 'automática';
+  alert('Voz guardada: ' + label);
 }
 
 function admSavePassphrase() {
@@ -2399,35 +3096,29 @@ function admSavePassphrase() {
   const phrase = input.value.trim();
   if (phrase.length < 3) { alert('La frase es muy corta.'); return; }
   setLangPassphrase(phrase);
-  alert('Frase de seguridad guardada.');
-  input.value = '';
-  showAdminPanel(); // refrescar para mostrar la nueva frase
+  alert('Frase guardada.');
+  showAdminPanel();
 }
 
 function admRecordPassphrase() {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SR) { alert('Tu navegador no soporta reconocimiento de voz.'); return; }
+  if (!SR) { alert('Reconocimiento de voz no disponible.'); return; }
   const r = new SR();
   r.lang = currentRecLang; r.continuous = false; r.interimResults = false;
   const btn = document.querySelector('[onclick="admRecordPassphrase()"]');
   if (btn) btn.textContent = '🔴 ESCUCHANDO...';
   r.onresult = (e) => {
     const phrase = e.results[0][0].transcript.trim();
-    if (phrase.length < 3) { alert('No se pudo escuchar. Intenta de nuevo.'); return; }
+    if (phrase.length < 3) { alert('No se escuchó. Intenta de nuevo.'); showAdminPanel(); return; }
     setLangPassphrase(phrase);
     alert('Frase grabada: "' + phrase + '"');
     showAdminPanel();
   };
-  r.onerror = () => { alert('Error al grabar. Intenta de nuevo.'); showAdminPanel(); };
-  r.onend = () => { showAdminPanel(); };
-  try { r.start(); } catch(e) { alert('No se pudo iniciar el micrófono.'); }
+  r.onerror = () => { showAdminPanel(); };
+  r.onend   = () => {};
+  try { r.start(); } catch(e) { showAdminPanel(); }
 }
 
-function closeAdminPanel() {
-  const p = document.getElementById('adminPanel');
-  if (p) p.style.display = 'none';
-  if (bienvenidaDone) setTimeout(startWake, 300);
-}
 
 function admResetDevice() {
   if (!confirm('¿Borrar todos los datos de este dispositivo y volver al onboarding inicial?')) return;
