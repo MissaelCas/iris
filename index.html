@@ -506,13 +506,13 @@ canvas { position: fixed; inset: 0; pointer-events: none; z-index: 0; }
 .adm-dd-btn:hover, .adm-dd-btn.active { border-color: rgba(0,229,255,0.5); color: #fff; }
 
 .adm-dd-list {
-  position: fixed; z-index: 9999; background: #080b12;
+  position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+  z-index: 999; background: #080b12;
   border: 1px solid rgba(0,229,255,0.25);
-  border-radius: 10px; max-height: 240px;
+  border-radius: 10px; max-height: 220px;
   overflow-y: auto; display: none; flex-direction: column;
-  box-shadow: 0 12px 40px rgba(0,0,0,0.8);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.7);
   scrollbar-width: thin; scrollbar-color: rgba(0,229,255,0.25) transparent;
-  min-width: 200px;
 }
 .adm-dd-list::-webkit-scrollbar { width: 3px; }
 .adm-dd-list::-webkit-scrollbar-thumb { background: rgba(0,229,255,0.25); border-radius:3px; }
@@ -1205,7 +1205,7 @@ async function learnFromConversation(userText, irisReply, passive=false) {
     if(updates.notas?.length) p.notas = [...new Set([...(p.notas||[]), ...updates.notas])];
     saveProfile(p); userProfile = p;
     console.log('✅ Perfil actualizado:', p);
-  } catch(e) { /* silencioso */ }
+  } catch(e) { console.error("learnFromConversation error:", e.message); }
 }
 
 // ── MEMORIA — cargar historial guardado (máx 20 turnos para no saturar) ──
@@ -1311,21 +1311,19 @@ function speak(text, onEnd) {
   utt.lang = activeLang; utt.rate=0.92; utt.pitch=1.05; utt.volume=1;
   const voices = tts.getVoices();
   const prefix = activeLang.split('-')[0];
+  // Primero: usar voz guardada por el admin si coincide con el idioma activo
   const savedVoiceName = localStorage.getItem('iris_voice') || '';
-  let v = null;
-  if (savedVoiceName) {
-    // Usar la voz guardada por el usuario
-    v = voices.find(x => x.name === savedVoiceName);
-  }
-  if (!v) {
-    // Auto: Neural/Natural > Google > Microsoft > cualquier voz del idioma
-    v = voices.find(x=>x.lang.startsWith(prefix)&&/Neural|Natural|Premium|Enhanced/i.test(x.name))
-      ||voices.find(x=>x.lang===activeLang&&x.name.includes('Google'))
-      ||voices.find(x=>x.lang===activeLang&&x.name.includes('Microsoft'))
-      ||voices.find(x=>x.lang.startsWith(prefix)&&(x.name.includes('Google')||x.name.includes('Microsoft')))
-      ||voices.find(x=>x.lang.startsWith(prefix)&&!x.name.includes('espeak')&&!x.name.includes('eSpeak'))
-      ||voices.find(x=>x.lang.startsWith('es'));
-  }
+  const savedVoice = savedVoiceName ? voices.find(v => v.name === savedVoiceName) : null;
+  // Si la voz guardada existe y es del idioma correcto (o es auto), usarla
+  // Si no, fallback a la mejor disponible
+  const v = (savedVoice && (savedVoice.lang.startsWith(prefix) || savedVoiceName === ''))
+          ? savedVoice
+          : voices.find(v=>v.lang.startsWith(prefix)&&/Neural|Natural|Premium|Enhanced/i.test(v.name))
+          ||voices.find(v=>v.lang===activeLang&&v.name.includes('Google'))
+          ||voices.find(v=>v.lang===activeLang&&v.name.includes('Microsoft'))
+          ||voices.find(v=>v.lang.startsWith(prefix)&&(v.name.includes('Google')||v.name.includes('Microsoft')))
+          ||voices.find(v=>v.lang.startsWith(prefix)&&!v.name.includes('espeak')&&!v.name.includes('eSpeak'))
+          ||voices.find(v=>v.lang.startsWith('es'));
   if(v) utt.voice=v;
   utt.onstart = ()=>{
     mode='speaking'; setOrbState('speaking');
@@ -1509,200 +1507,376 @@ function localReply(text) {
 
 // ── HANDLE QUERY ──
 
-// ── RECORDATORIOS ──
-function handleListarRecordatorios() {
-  const p = userProfile;
-  const pendientes = (p.recordatorios || []).filter(r => !r.completado);
-  let reply;
-  if (!pendientes.length) {
-    reply = 'No tienes recordatorios pendientes.';
+// ════════════════════════════════════════════
+// ── SISTEMA DE RECORDATORIOS ──
+// Detección directa en handleQuery (no depende del learn async)
+// Parser robusto de hora/fecha/recurrencia
+// Checker cada 15s, alarma aunque no estén interactuando
+// ════════════════════════════════════════════
+
+// ── PARSER HORA (HH:MM 24h desde cualquier formato) ──
+function parseHoraTexto(texto) {
+  if (!texto) return null;
+  const t = String(texto).toLowerCase().trim();
+
+  // Ya es HH:MM
+  const hhmm = t.match(/^(\d{1,2}):(\d{2})$/);
+  if (hhmm) {
+    const h = parseInt(hhmm[1]), m = parseInt(hhmm[2]);
+    if (h >= 0 && h <= 23 && m >= 0 && m <= 59) return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+  }
+
+  // "a las X", "las X", "X am/pm", "X de la mañana/tarde/noche"
+  const pat = /(?:a\s+las?\s+|las?\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm|de\s+la\s+(?:ma[nñ]ana|tarde|noche))?/;
+  const m = t.match(pat);
+  if (m) {
+    let h = parseInt(m[1]), min = parseInt(m[2] || '0');
+    const suf = m[3] || '';
+    if (suf.includes('pm') || suf.includes('tarde') || suf.includes('noche')) {
+      if (h < 12) h += 12;
+    } else if (suf.includes('am') || suf.includes('mañana')) {
+      if (h === 12) h = 0;
+    } else if (!suf && h >= 1 && h <= 6) {
+      h += 12; // ambigüedad: las 2 = las 2pm por defecto
+    }
+    if (h >= 0 && h <= 23 && min >= 0 && min <= 59) {
+      return `${String(h).padStart(2,'0')}:${String(min).padStart(2,'0')}`;
+    }
+  }
+  return null;
+}
+
+// ── DETECTAR RECORDATORIO EN TEXTO DEL USUARIO ──
+function detectarRecordatorio(text) {
+  const t = text.toLowerCase();
+
+  // Gatillo: frases que piden un recordatorio
+  const esRecordatorio = /\b(recuérdame|recuerdame|ponme|pon\s+un|crea\s+un|agregar?\s+recordatorio|recuerda(?:me)?|avísame|avisame|alarma|alert[ae])\b/i.test(text);
+  if (!esRecordatorio) return null;
+
+  // ── Detectar recurrencia ──
+  let recurrencia = 'unico';
+  let diasSemana = null;
+
+  if (/todos\s+los\s+d[ií]as|cada\s+d[ií]a|diario|diariamente/i.test(t)) {
+    recurrencia = 'diario';
+  } else if (/lunes\s+(a|al)\s+viernes|de\s+lunes\s+a\s+viernes|entre\s+semana/i.test(t)) {
+    recurrencia = 'lunes_viernes';
+  } else if (/fin\s+de\s+semana|s[áa]bado\s+y\s+domingo/i.test(t)) {
+    recurrencia = 'fin_de_semana';
   } else {
-    reply = 'Tus recordatorios pendientes: ' + pendientes.map((r,i) => {
+    // Días específicos
+    const diasMap = {lunes:1,martes:2,'miércoles':3,miercoles:3,jueves:4,viernes:5,'sábado':6,sabado:6,domingo:0};
+    const encontrados = [];
+    for (const [nom] of Object.entries(diasMap)) {
+      if (t.includes(nom)) encontrados.push(nom);
+    }
+    if (encontrados.length >= 2) {
+      recurrencia = 'semanal';
+      diasSemana = encontrados;
+    } else if (encontrados.length === 1) {
+      recurrencia = 'semanal';
+      diasSemana = encontrados;
+    }
+  }
+
+  // ── Detectar hora ──
+  // Buscar cualquier patrón de hora en el texto
+  const horaPatterns = [
+    // "a las 2:15 pm", "a las 14:15"
+    /a\s+las?\s+(\d{1,2}(?::\d{2})?)\s*(am|pm|de\s+la\s+(?:ma[nñ]ana|tarde|noche))?/i,
+    // "las 3", "las 3pm"
+    /las?\s+(\d{1,2}(?::\d{2})?)\s*(am|pm)?/i,
+    // "2:15pm", "14:30"
+    /\b(\d{1,2}:\d{2})\s*(am|pm)?\b/i,
+  ];
+
+  let horaTexto = null;
+  for (const pat of horaPatterns) {
+    const m = text.match(pat);
+    if (m) {
+      horaTexto = parseHoraTexto(m[0]);
+      if (horaTexto) break;
+    }
+  }
+
+  if (!horaTexto) return null; // sin hora, no es una alarma accionable
+
+  // ── Detectar texto del recordatorio (qué recordar) ──
+  // Quitar el gatillo, la hora, la recurrencia, y quedarnos con el tema
+  let tema = text
+    .replace(/recuérdame|recuerdame|ponme|pon\s+un\s+recordatorio|crea\s+un\s+recordatorio|recuerda(?:me)?|avísame|avisame|alarma\s+para|recordatorio\s+para/gi, '')
+    .replace(/a\s+las?\s+\d{1,2}(?::\d{2})?\s*(?:am|pm|de\s+la\s+(?:ma[nñ]ana|tarde|noche))?/gi, '')
+    .replace(/las?\s+\d{1,2}(?::\d{2})?\s*(?:am|pm)?/gi, '')
+    .replace(/\d{1,2}:\d{2}\s*(?:am|pm)?/gi, '')
+    .replace(/todos\s+los\s+d[ií]as|cada\s+d[ií]a|diario|diariamente/gi, '')
+    .replace(/lunes\s+(a|al)\s+viernes|de\s+lunes\s+a\s+viernes|entre\s+semana/gi, '')
+    .replace(/fin\s+de\s+semana|s[áa]bado\s+y\s+domingo/gi, '')
+    .replace(/\b(lunes|martes|mi[eé]rcoles|jueves|viernes|s[áa]bado|domingo)\b/gi, '')
+    .replace(/\s+/g, ' ').trim()
+    .replace(/^(que|de|para|el|la|un|una|,)\s+/i, '')
+    .trim();
+
+  if (!tema || tema.length < 2) tema = 'recordatorio';
+
+  // Capitalizar primer letra
+  tema = tema.charAt(0).toUpperCase() + tema.slice(1);
+
+  return { texto: tema, horaTexto, recurrencia, diasSemana };
+}
+
+// ── CALCULAR PRÓXIMA OCURRENCIA ──
+function proximaOcurrencia(r) {
+  if (!r.horaTexto) return null;
+  const [hh, mm] = r.horaTexto.split(':').map(Number);
+  const now = new Date();
+  const d = new Date(now);
+  d.setSeconds(0, 0);
+  d.setHours(hh, mm);
+
+  if (!r.recurrencia || r.recurrencia === 'unico') {
+    // Para únicos usar la fecha guardada directamente
+    return r.fechaISO ? new Date(r.fechaISO) : null;
+  }
+
+  if (r.recurrencia === 'diario') {
+    if (d <= now) d.setDate(d.getDate() + 1);
+    return d;
+  }
+
+  if (r.recurrencia === 'lunes_viernes') {
+    for (let i = 0; i < 8; i++) {
+      const wd = d.getDay();
+      if (wd >= 1 && wd <= 5 && d > now) return d;
+      d.setDate(d.getDate() + 1); d.setHours(hh, mm, 0, 0);
+    }
+  }
+
+  if (r.recurrencia === 'fin_de_semana') {
+    for (let i = 0; i < 8; i++) {
+      const wd = d.getDay();
+      if ((wd === 0 || wd === 6) && d > now) return d;
+      d.setDate(d.getDate() + 1); d.setHours(hh, mm, 0, 0);
+    }
+  }
+
+  if (r.recurrencia === 'semanal' && r.diasSemana?.length) {
+    const idx = {lunes:1,martes:2,'miércoles':3,miercoles:3,jueves:4,viernes:5,'sábado':6,sabado:6,domingo:0};
+    for (let i = 0; i < 8; i++) {
+      const wd = d.getDay();
+      if (r.diasSemana.some(x => (idx[x.toLowerCase()] ?? -1) === wd) && d > now) return d;
+      d.setDate(d.getDate() + 1); d.setHours(hh, mm, 0, 0);
+    }
+  }
+
+  if (d <= now) d.setDate(d.getDate() + 1);
+  return d;
+}
+
+// ── GUARDAR RECORDATORIO ──
+function guardarRecordatorio(rec) {
+  userProfile.recordatorios = userProfile.recordatorios || [];
+  const p = userProfile;
+
+  // Calcular próxima ocurrencia para fechaISO
+  let fechaISO = null;
+  const [hh, mm] = rec.horaTexto.split(':').map(Number);
+  const d = new Date();
+  d.setSeconds(0, 0);
+  d.setHours(hh, mm);
+  if (d <= new Date()) d.setDate(d.getDate() + 1); // si ya pasó hoy, mañana
+  fechaISO = d.toISOString();
+
+  const nuevo = {
+    id: Date.now() + '_' + Math.random().toString(36).slice(2,6),
+    texto: rec.texto,
+    horaTexto: rec.horaTexto,
+    recurrencia: rec.recurrencia || 'unico',
+    diasSemana: rec.diasSemana || null,
+    fechaISO,
+    completado: false,
+    creado: new Date().toISOString()
+  };
+
+  p.recordatorios.push(nuevo);
+  saveProfile(p);
+  userProfile = p;
+
+  const recStr = {
+    unico: 'una vez',
+    diario: 'todos los días',
+    lunes_viernes: 'lunes a viernes',
+    fin_de_semana: 'fines de semana',
+    semanal: nuevo.diasSemana?.join(', ') || 'semanal'
+  }[nuevo.recurrencia] || nuevo.recurrencia;
+
+  console.log(`✅ Recordatorio guardado: "${nuevo.texto}" | ${nuevo.horaTexto} | ${recStr} | próximo: ${new Date(fechaISO).toLocaleString('es-MX')}`);
+  return nuevo;
+}
+
+// ── LISTAR RECORDATORIOS ──
+function handleListarRecordatorios() {
+  const activos = (userProfile.recordatorios || []).filter(r => !r.completado);
+  let reply;
+  if (!activos.length) {
+    reply = 'No tienes recordatorios activos.';
+  } else {
+    reply = 'Tus recordatorios: ' + activos.map((r, i) => {
       const prox = proximaOcurrencia(r);
-      const cuandoStr = prox ? prox.toLocaleString('es-MX',{weekday:'short',hour:'2-digit',minute:'2-digit'}) : (r.horaTexto||r.fecha||'');
-      const recStr = r.recurrencia&&r.recurrencia!=='unico'?' ('+r.recurrencia.replace('_',' ')+')':'';
-      return `${i+1}. ${r.texto}${cuandoStr?', '+cuandoStr:''}${recStr}`;
+      const cuandoStr = prox
+        ? prox.toLocaleString('es-MX', { weekday:'short', hour:'2-digit', minute:'2-digit' })
+        : r.horaTexto || '';
+      const recStr = {
+        diario:' todos los días', lunes_viernes:' lunes a viernes',
+        fin_de_semana:' fines de semana',
+        semanal: r.diasSemana?.length ? ' los '+r.diasSemana.join(', ') : ' semanal'
+      }[r.recurrencia] || '';
+      return `${i+1}. ${r.texto}${cuandoStr ? ', ' + cuandoStr : ''}${recStr}`;
     }).join('. ');
   }
   showMsg(reply, 'IRIS');
   speak(reply);
 }
 
+// ── COMPLETAR RECORDATORIO ──
 function handleCompletarRecordatorio(text) {
-  const p = userProfile;
-  const pendientes = (p.recordatorios || []).filter(r => !r.completado);
-  if (!pendientes.length) {
-    const reply = 'No tienes recordatorios pendientes.';
+  const activos = (userProfile.recordatorios || []).filter(r => !r.completado);
+  if (!activos.length) {
+    const reply = 'No tienes recordatorios activos.';
     showMsg(reply, 'IRIS'); speak(reply); return;
   }
-  // Marcar el primero o el que mencione por texto
   const t = text.toLowerCase();
-  let target = pendientes.find(r => t.includes(r.texto.toLowerCase().split(' ')[0])) || pendientes[0];
-  target.completado = true;
-  saveProfile(p);
-  const reply = `Listo, marqué como completado: ${target.texto}.`;
-  showMsg(reply, 'IRIS'); speak(reply);
+  let target = activos.find(r => t.includes(r.texto.toLowerCase().split(' ')[0])) || activos[0];
+  if (target.recurrencia && target.recurrencia !== 'unico') {
+    // Recurrente: solo confirmar que ya lo hizo hoy, no eliminar
+    target.ultimaConfirmacion = new Date().toISOString();
+    saveProfile(userProfile);
+    const reply = `Listo, anotado. Tu recordatorio de "${target.texto}" sigue activo para la próxima vez.`;
+    showMsg(reply, 'IRIS'); speak(reply);
+  } else {
+    target.completado = true;
+    saveProfile(userProfile);
+    const reply = `Listo, eliminé el recordatorio: "${target.texto}".`;
+    showMsg(reply, 'IRIS'); speak(reply);
+    console.log(`🗑 Recordatorio único completado: ${target.texto}`);
+  }
 }
 
-// ── PARSER DE FECHAS DE RECORDATORIOS ──
-// Intenta convertir texto libre de fecha a un objeto Date
-function parseFechaRecordatorio(texto) {
-  if (!texto) return null;
-  const t = String(texto).toLowerCase().trim();
-  const now = new Date();
-  // ISO directo
-  const direct = new Date(texto);
-  if (!isNaN(direct.getTime()) && direct.getFullYear() > 2020) return direct.toISOString();
-  // HH:MM solo
-  const soloHora = t.match(/^(\d{1,2}):(\d{2})$/);
-  if (soloHora) {
-    const d = new Date(now); d.setHours(parseInt(soloHora[1]),parseInt(soloHora[2]),0,0);
-    if (d <= now) d.setDate(d.getDate()+1); return d.toISOString();
-  }
-  // mañana [a las] HH:MM
-  const man = t.match(/ma[nñ]ana[,\s]+(?:a\s+las?\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/);
-  if (man) {
-    const d = new Date(now); d.setDate(d.getDate()+1);
-    let h=parseInt(man[1]),m=parseInt(man[2]||'0');
-    if(man[3]==='pm'&&h<12)h+=12; if(man[3]==='am'&&h===12)h=0;
-    d.setHours(h,m,0,0); return d.toISOString();
-  }
-  // hoy [a las] HH:MM
-  const hoy = t.match(/hoy[,\s]+(?:a\s+las?\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/);
-  if (hoy) {
-    const d = new Date(now);
-    let h=parseInt(hoy[1]),m=parseInt(hoy[2]||'0');
-    if(hoy[3]==='pm'&&h<12)h+=12; if(hoy[3]==='am'&&h===12)h=0;
-    d.setHours(h,m,0,0); return d.toISOString();
-  }
-  // a las X / las X (en cualquier parte)
-  const aLas = t.match(/(?:a\s+)?las?\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/);
-  if (aLas) {
-    const d = new Date(now);
-    let h=parseInt(aLas[1]),m=parseInt(aLas[2]||'0');
-    if(aLas[3]==='pm'&&h<12)h+=12; else if(aLas[3]==='am'&&h===12)h=0;
-    else if(!aLas[3]&&h>=1&&h<=7){ const dp=new Date(now);dp.setHours(h+12,m,0,0);if(dp>now)h+=12; }
-    d.setHours(h,m,0,0); if(d<=now)d.setDate(d.getDate()+1); return d.toISOString();
-  }
-  // lunes/martes/... [a las] X
-  const diasMap = {domingo:0,lunes:1,martes:2,'miércoles':3,miercoles:3,jueves:4,viernes:5,'sábado':6,sabado:6};
-  for (const [nom,idx] of Object.entries(diasMap)) {
-    const re = new RegExp(nom+'[,\s]+(?:a\s+las?\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)?');
-    const mm = t.match(re);
-    if (mm) {
-      const d=new Date(now); let diff=idx-d.getDay(); if(diff<=0)diff+=7; d.setDate(d.getDate()+diff);
-      let h=parseInt(mm[1]),min=parseInt(mm[2]||'0');
-      if(mm[3]==='pm'&&h<12)h+=12; if(mm[3]==='am'&&h===12)h=0;
-      d.setHours(h,min,0,0); return d.toISOString();
-    }
-  }
-  // DD/MM o "15 de julio" [HH:MM]
-  const meses = {enero:0,febrero:1,marzo:2,abril:3,mayo:4,junio:5,julio:6,agosto:7,septiembre:8,octubre:9,noviembre:10,diciembre:11};
-  const fRe = t.match(/(\d{1,2})[\/\-\s](?:de\s+)?(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre|\d{1,2})(?:[\/\-\s](?:de\s+)?(\d{2,4}))?(?:[,\s]+(?:a\s+las?\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)?)?/);
-  if (fRe) {
-    const dia=parseInt(fRe[1]),mes=isNaN(fRe[2])?meses[fRe[2]]:parseInt(fRe[2])-1;
-    const anio=fRe[3]?(fRe[3].length===2?2000+parseInt(fRe[3]):parseInt(fRe[3])):now.getFullYear();
-    let h=fRe[4]?parseInt(fRe[4]):9,min=fRe[5]?parseInt(fRe[5]):0;
-    if(fRe[6]==='pm'&&h<12)h+=12;
-    if(!isNaN(dia)&&mes!==undefined){const d=new Date(anio,mes,dia,h,min,0);if(!isNaN(d.getTime()))return d.toISOString();}
-  }
-  return null;
-}
-
-function proximaOcurrencia(r) {
-  if (!r.fechaISO) return null;
-  const base = new Date(r.fechaISO);
-  const now = new Date();
-  if (!r.recurrencia || r.recurrencia==='unico') return base;
-  const hh=base.getHours(), mm=base.getMinutes();
-  const d = new Date(now); d.setHours(hh,mm,0,0);
-  if (r.recurrencia==='diario') { if(d<=now)d.setDate(d.getDate()+1); return d; }
-  if (r.recurrencia==='lunes_viernes') {
-    while([0,6].includes(d.getDay())||d<=now){d.setDate(d.getDate()+1);d.setHours(hh,mm,0,0);}
-    return d;
-  }
-  if (r.recurrencia==='fin_de_semana') {
-    while(![0,6].includes(d.getDay())||d<=now){d.setDate(d.getDate()+1);d.setHours(hh,mm,0,0);}
-    return d;
-  }
-  if (r.recurrencia==='semanal') {
-    const target=base.getDay(); let diff=target-d.getDay(); if(diff<=0)diff+=7;
-    d.setDate(d.getDate()+diff); if(d<=now)d.setDate(d.getDate()+7); return d;
-  }
-  return base;
-}
-
-// ── CHECKER DE RECORDATORIOS — revisa cada minuto ──
-let _reminderCheckInterval = null;
-let _lastReminderFired = {}; // evitar repetir el mismo aviso
+// ── CHECKER DE ALARMAS ──
+let _alarmInterval = null;
+// _firedKeys: clave → timestamp cuando se disparó
+// Se limpia al inicio para no bloquear alarmas de sesiones anteriores
+let _firedKeys = {};
 
 function startReminderChecker() {
-  if (_reminderCheckInterval) return;
-  const p = userProfile;
-  if (p.recordatorios?.length) {
-    const now = new Date();
-    let changed = false;
-
-    p.recordatorios.forEach(r => {
-      // Parsear fechaISO si falta (recordatorios viejos)
-      if ((r._needsParse || !r.fechaISO) && (r.horaTexto || r.fecha)) {
-        r.fechaISO = parseFechaRecordatorio(r.horaTexto || r.fecha);
-        delete r._needsParse;
-        changed = true;
-      }
-      // Limpiar únicos caducados: si su fecha ya pasó hace más de 1 hora
-      if (!r.completado && r.fechaISO && (!r.recurrencia || r.recurrencia === 'unico')) {
-        const due = new Date(r.fechaISO);
-        if ((now - due) > 60 * 60 * 1000) { // más de 1h vencido
-          r.completado = true;
-          changed = true;
-          console.log('🗑 Recordatorio único vencido limpiado:', r.texto);
-        }
-      }
-    });
-
-    // Purgar completados con más de 24h de antigüedad para no acumular basura
-    const antes = p.recordatorios.length;
-    p.recordatorios = p.recordatorios.filter(r => {
-      if (!r.completado) return true;
-      const creadoHace = now - new Date(r.creado || 0);
-      return creadoHace < 24 * 60 * 60 * 1000; // guardar completados menos de 24h
-    });
-    if (p.recordatorios.length !== antes) changed = true;
-
-    if (changed) saveProfile(p);
-  }
-  _reminderCheckInterval = setInterval(checkDueReminders, 30000);
+  if (_alarmInterval) return;
+  limpiarRecordatoriosCaducados();
+  _alarmInterval = setInterval(() => {
+    limpiarRecordatoriosCaducados();
+    checkDueReminders();
+  }, 15000); // cada 15 segundos
   checkDueReminders();
+  console.log('⏰ Checker de alarmas iniciado (cada 15s)');
+}
+
+function limpiarRecordatoriosCaducados() {
+  const p = userProfile;
+  if (!p.recordatorios?.length) return;
+  const now = new Date();
+  let changed = false;
+
+  p.recordatorios.forEach(r => {
+    if (r.completado || !r.fechaISO) return;
+    if (r.recurrencia && r.recurrencia !== 'unico') return; // recurrentes nunca caducan
+    const due = new Date(r.fechaISO);
+    const minutosVencido = (now - due) / 60000;
+    if (minutosVencido > 10) { // pasó más de 10 minutos → caducado
+      r.completado = true;
+      changed = true;
+      console.log(`🗑 Recordatorio caducado eliminado: "${r.texto}" (venció ${Math.round(minutosVencido)}min ago)`);
+    }
+  });
+
+  // Purgar completados con más de 1h
+  const antes = p.recordatorios.length;
+  p.recordatorios = p.recordatorios.filter(r => {
+    if (!r.completado) return true;
+    return (now - new Date(r.creado || 0)) < 3600000;
+  });
+  if (p.recordatorios.length !== antes) changed = true;
+
+  if (changed) { saveProfile(p); userProfile = p; }
 }
 
 function checkDueReminders() {
-  if (!bienvenidaDone) return;
-  if (mode === 'speaking' || mode === 'processing') return;
   const p = userProfile;
-  const pendientes = (p.recordatorios || []).filter(r => !r.completado && r.fechaISO);
+  const activos = (p.recordatorios || []).filter(r => !r.completado && r.horaTexto);
+  if (!activos.length) return;
+
   const now = new Date();
-  for (const r of pendientes) {
-    const due = proximaOcurrencia(r) || new Date(r.fechaISO);
-    const diffMin = (due - now) / 60000;
-    if (diffMin <= 1 && diffMin > -1) {
-      const key = r.texto + '_' + due.toISOString().slice(0,13);
-      if (_lastReminderFired[key]) continue;
-      _lastReminderFired[key] = true;
-      const horaStr = due.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'});
-      const prefix = (getLangProfile().preferido||'es-MX').split('-')[0];
-      const reply = prefix==='en'
-        ? (diffMin<=0?`Reminder: ${r.texto}.`:`Reminder at ${horaStr}: ${r.texto}.`)
-        : (diffMin<=0?`Recordatorio: ${r.texto}.`:`Recordatorio a las ${horaStr}: ${r.texto}.`);
-      if (!r.recurrencia || r.recurrencia==='unico') { r.completado=true; saveProfile(p); }
-      tts.cancel();
-      if (rec){try{rec.abort();}catch(e){}rec=null;}
-      mode='idle';
-      showMsg(reply,'IRIS');
-      speak(reply,()=>{mode='idle';startWake();});
-      break;
+
+  for (const r of activos) {
+    const prox = proximaOcurrencia(r);
+    if (!prox) continue;
+
+    const diffMs = prox - now;
+    const diffSeg = diffMs / 1000;
+
+    // Disparar si está dentro de ±60 segundos
+    if (diffSeg > -60 && diffSeg <= 60) {
+      // Clave incluye día+hora para no bloquear la misma alarma en días siguientes
+      const key = r.id + '_' + prox.toISOString().slice(0, 16);
+      if (_firedKeys[key]) continue;
+      _firedKeys[key] = Date.now();
+
+      console.log(`🔔 ALARMA: "${r.texto}" | ${r.horaTexto} | ${r.recurrencia}`);
+
+      // Marcar único como completado
+      if (!r.recurrencia || r.recurrencia === 'unico') {
+        r.completado = true;
+        saveProfile(p);
+        userProfile = p;
+      }
+
+      // Disparar alarma — interrumpir lo que sea
+      dispararAlarma(r);
+      break; // una a la vez, la próxima iteración tomará la siguiente
     }
   }
+
+  // Limpiar claves disparadas hace más de 5 minutos (para que el día siguiente funcione)
+  const hace5m = Date.now() - 5 * 60 * 1000;
+  Object.keys(_firedKeys).forEach(k => { if (_firedKeys[k] < hace5m) delete _firedKeys[k]; });
+}
+
+function dispararAlarma(r) {
+  const prefix = (getLangProfile().preferido || 'es-MX').split('-')[0];
+  const msgs = {
+    es: `⏰ Recordatorio: ${r.texto}.`,
+    en: `⏰ Reminder: ${r.texto}.`,
+    fr: `⏰ Rappel: ${r.texto}.`,
+    pt: `⏰ Lembrete: ${r.texto}.`,
+    de: `⏰ Erinnerung: ${r.texto}.`,
+  };
+  const reply = msgs[prefix] || msgs.es;
+
+  // Cancelar lo que esté haciendo
+  tts.cancel();
+  if (rec) { try { rec.abort(); } catch(e) {} rec = null; }
+  clearTimeout(silenceTimer);
+
+  // Beep + voz
+  playBeep();
+  setTimeout(() => {
+    mode = 'speaking';
+    setOrbState('speaking');
+    showMsg(reply, 'IRIS');
+    speak(reply, () => {
+      mode = 'idle';
+      setOrbState('idle');
+      startWake();
+    });
+  }, 300);
 }
 
 // ── CONTACTOS DE EMERGENCIA ──
@@ -1863,8 +2037,27 @@ async function handleQuery(text) {
   if (/\b(mis recordatorios|qué tengo pendiente|recordatorios pendientes|que tengo anotado)\b/.test(ht)) {
     handleListarRecordatorios(); return;
   }
-  if (/\b(marca(r|do)?|completa(r|do)?|ya fui|ya lo hice|listo el recordatorio)\b/.test(ht)) {
+  if (/\b(marca(r|do)?|completa(r|do)?|ya fui|ya lo hice|listo el recordatorio|elimina(r)? recordatorio)\b/.test(ht)) {
     handleCompletarRecordatorio(text); return;
+  }
+  // Detección directa de nueva alarma — sin esperar al learn async
+  const _recDet = detectarRecordatorio(text);
+  if (_recDet) {
+    const _nuevo = guardarRecordatorio(_recDet);
+    const _prox  = proximaOcurrencia(_nuevo);
+    const _proxStr = _prox
+      ? _prox.toLocaleString('es-MX', { weekday:'long', hour:'2-digit', minute:'2-digit' })
+      : _recDet.horaTexto;
+    const _recStr = {
+      unico:'', diario:' todos los días',
+      lunes_viernes:' de lunes a viernes',
+      fin_de_semana:' los fines de semana',
+      semanal: _recDet.diasSemana?.length ? ' los '+_recDet.diasSemana.join(', ') : ' semanalmente'
+    }[_recDet.recurrencia] || '';
+    const _reply = `Listo, te recuerdo "${_nuevo.texto}" a las ${_nuevo.horaTexto}${_recStr}. Próxima alarma: ${_proxStr}.`;
+    showMsg(_reply, 'IRIS');
+    speak(_reply);
+    return;
   }
   // ── Comandos de contactos de emergencia ──
   if (/\b(mis contactos|contactos de emergencia|a quien llamo|a quién llamo)\b/.test(ht)) {
@@ -2850,6 +3043,12 @@ function showAdminPanel() {
       </div>
     </div>
 
+    <!-- RECORDATORIOS ACTIVOS -->
+    <div class="adm-card adm-full" id="admRecCard">
+      <div class="adm-card-title">⏰ RECORDATORIOS ACTIVOS</div>
+      <div id="admRecList" style="display:flex;flex-direction:column;gap:6px;"></div>
+    </div>
+
     <div class="adm-row">
       <button class="adm-btn adm-full" onclick="openTestMode()" style="border-color:rgba(0,229,255,0.5);color:#00e5ff;font-size:10px;">🧪 MODO TESTEO</button>
       <button class="adm-btn adm-full" onclick="downloadContracts()" style="font-size:10px;">📄 CONTRATOS</button>
@@ -2880,53 +3079,20 @@ let _selVoice = null;
 function ddToggle(id) {
   const list = document.getElementById(id + 'List');
   const btn  = document.getElementById(id + 'Btn');
-  if (!list || !btn) return;
+  if (!list) return;
   const isOpen = list.classList.contains('open');
-  // Cerrar todos
+  // Close all
   document.querySelectorAll('.adm-dd-list').forEach(el => el.classList.remove('open'));
   document.querySelectorAll('.adm-dd-btn').forEach(el => el.classList.remove('active'));
-  if (!isOpen) {
-    // Posicionar con fixed relativo al botón (evita recorte por overflow)
-    const rect = btn.getBoundingClientRect();
-    list.style.left  = rect.left + 'px';
-    list.style.width = rect.width + 'px';
-    // Abrir hacia abajo o arriba según espacio disponible
-    const spaceBelow = window.innerHeight - rect.bottom;
-    const listH = Math.min(240, list.scrollHeight || 240);
-    if (spaceBelow < listH && rect.top > listH) {
-      list.style.top    = (rect.top - listH - 4) + 'px';
-      list.style.bottom = 'auto';
-    } else {
-      list.style.top    = (rect.bottom + 4) + 'px';
-      list.style.bottom = 'auto';
-    }
-    list.classList.add('open');
-    btn.classList.add('active');
-    // Scroll al item seleccionado
-    const sel = list.querySelector('.sel');
-    if (sel) setTimeout(() => sel.scrollIntoView({ block:'nearest' }), 50);
-  }
+  if (!isOpen) { list.classList.add('open'); btn && btn.classList.add('active'); }
 }
 
 document.addEventListener('click', (e) => {
-  if (!e.target.closest('.adm-dd') && !e.target.closest('.adm-dd-list')) {
+  if (!e.target.closest('.adm-dd')) {
     document.querySelectorAll('.adm-dd-list').forEach(el => el.classList.remove('open'));
     document.querySelectorAll('.adm-dd-btn').forEach(el => el.classList.remove('active'));
   }
 });
-// Reposicionar dropdown al hacer scroll del panel
-document.addEventListener('scroll', () => {
-  document.querySelectorAll('.adm-dd-list.open').forEach(list => {
-    const id = list.id.replace('List','');
-    const btn = document.getElementById(id + 'Btn');
-    if (btn) {
-      const rect = btn.getBoundingClientRect();
-      list.style.left  = rect.left + 'px';
-      list.style.width = rect.width + 'px';
-      list.style.top   = (rect.bottom + 4) + 'px';
-    }
-  });
-}, true);
 
 function buildLangOptions(activeLangCode) {
   const groups = [
@@ -2994,6 +3160,42 @@ function admApplyLang() {
   alert('Idioma: ' + val.nombre + ' ' + (val.flag||''));
   showAdminPanel();
 }
+
+function admPopulateReminders() {
+  const box = document.getElementById('admRecList');
+  if (!box) return;
+  const activos = (userProfile.recordatorios || []).filter(r => !r.completado);
+  if (!activos.length) {
+    box.innerHTML = '<div style="font-size:11px;color:rgba(240,244,248,0.3);padding:4px 0;">Sin recordatorios activos</div>';
+    return;
+  }
+  const recLabels = {
+    unico:'una vez', diario:'diario',
+    lunes_viernes:'lun-vie', fin_de_semana:'fin de semana', semanal:'semanal'
+  };
+  box.innerHTML = activos.map((r, i) => {
+    const prox = proximaOcurrencia(r);
+    const proxStr = prox ? prox.toLocaleString('es-MX',{weekday:'short',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '—';
+    const diff = prox ? Math.round((prox - new Date()) / 60000) : null;
+    const diffStr = diff === null ? '' : diff < 60 ? `${diff}min` : diff < 1440 ? `${Math.floor(diff/60)}h` : `${Math.floor(diff/1440)}d`;
+    const color = diff !== null && diff <= 60 ? '#ffcc44' : '#00e5ff';
+    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:rgba(0,229,255,0.04);border:1px solid rgba(0,229,255,0.1);border-radius:8px;gap:8px;">
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:12px;color:#e8f6ff;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${r.texto}</div>
+        <div style="font-size:9px;color:rgba(0,229,255,0.5);margin-top:2px;">${r.horaTexto} · ${recLabels[r.recurrencia]||r.recurrencia} · ${proxStr}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+        ${diff!==null?`<span style="font-size:10px;color:${color};font-weight:700;">${diffStr}</span>`:''}
+        <button onclick="admBorrarRec('${r.id}')" style="background:transparent;border:1px solid rgba(255,80,80,0.3);color:rgba(255,100,100,0.7);padding:3px 7px;border-radius:5px;font-size:11px;cursor:pointer;">×</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+window.admBorrarRec = (id) => {
+  const r = (userProfile.recordatorios||[]).find(x=>x.id===id);
+  if (r) { r.completado = true; saveProfile(userProfile); admPopulateReminders(); console.log('🗑 Borrado desde admin:', r.texto); }
+};
 
 function admPopulateVoices() {
   const list = document.getElementById('ddVoiceList');
@@ -3087,7 +3289,14 @@ function admSaveVoice() {
   if (_selVoice) localStorage.setItem('iris_voice', _selVoice);
   else localStorage.removeItem('iris_voice');
   const label = _selVoice ? _selVoice.split(' ').slice(0,3).join(' ') : 'automática';
-  alert('Voz guardada: ' + label);
+  // Confirmar con la propia voz en lugar de alert()
+  const utt = new SpeechSynthesisUtterance(`Voz guardada: ${label}. Así sonaré de ahora en adelante.`);
+  utt.lang = 'es-MX'; utt.rate = 0.92; utt.pitch = 1.05; utt.volume = 1;
+  if (_selVoice) {
+    const v = tts.getVoices().find(v => v.name === _selVoice);
+    if (v) utt.voice = v;
+  }
+  tts.cancel(); tts.speak(utt);
 }
 
 function admSavePassphrase() {
@@ -3306,49 +3515,48 @@ function _convoLoop() {
 // Desktop: continuous=true, mic abierto siempre, sin clics
 // Móvil:   continuous=true también, pero con watchdog que reinicia si Chrome lo mata
 //          silenciosamente — evita el clic constante del loop continuous:false
+// Variables externas para wake — sobreviven al cierre del closure por Chrome Android
+let _wakeHeard = '';
+let _wakeIrisFound = false;
+let _wakeHasQuestion = false;
+let _wakeCommitted = false;
+
 function startWake() {
   if(!bienvenidaDone || mode!=='idle') return;
   mode='wake';
   statusText.textContent=getUI('wake');
   setOrbState('idle');
   clearSilence();
+  // Reset estado externo
+  _wakeHeard=''; _wakeIrisFound=false; _wakeHasQuestion=false; _wakeCommitted=false;
 
-  // continuous:true en ambos — evita abrir/cerrar mic en cada ciclo (clic Android)
-  const r = newRec(true);
+  const r = newRec(true); // continuous:true — evita clic de apertura/cierre
   if(!r) return;
   rec=r;
-
-  let heard='';
-  let irisFound=false;
-  let hasQuestion=false;
-  // Watchdog: en móvil Chrome mata continuous silenciosamente cada ~60s
-  // Si onend llega sin que nosotros lo pidamos, reiniciar
-  let committedByUs = false;
 
   const commit=()=>{
     clearSilence();
     if(mode!=='wake') return;
-    committedByUs=true;
+    _wakeCommitted=true;
     try{r.stop();}catch(e){}
   };
 
   r.onresult=(e)=>{
-    // Ignorar si IRIS está hablando (eco en altavoz)
-    if(mode==='speaking') return;
+    if(mode==='speaking') return; // ignorar eco del altavoz
     const finalPart=Array.from(e.results).filter(r=>r.isFinal).map(r=>r[0].transcript).join('');
     const interimPart=Array.from(e.results).filter(r=>!r.isFinal).map(r=>r[0].transcript).join('');
     let full=(finalPart+interimPart).trim();
-    full=full.trim(); heard=full;
+    _wakeHeard=full; // guardar en variable externa
     if(!containsIris(full)) {
       const onlyFinal = finalPart.trim();
       if(onlyFinal.length > 6) passiveListen(onlyFinal);
       return;
     }
     const isFinal = e.results[e.results.length-1]?.isFinal;
-    const startsWithIris = /^(oye\s+)?iris\b/i.test(full);
+    const startsWithIris = /^(oye\s+)?iris/i.test(full);
     if(!startsWithIris && !isFinal) return;
-    if(!irisFound){
-      irisFound=true;
+    if(!_wakeIrisFound){
+      _wakeIrisFound=true;
       playBeep();
       setOrbState('listening');
       statusText.textContent=getUI('listening');
@@ -3356,9 +3564,9 @@ function startWake() {
     }
     const extra=stripIris(full);
     if(extra.length>2){
-      hasQuestion=true;
+      _wakeHasQuestion=true;
       showMsg(extra,getUI('youLabel'));
-      setSilence(getSilenceMs(), commit);
+      setSilence(getSilenceMs(), commit); // reset timer con cada palabra
     } else {
       showMsg('...',getUI('youLabel'));
     }
@@ -3367,17 +3575,17 @@ function startWake() {
   const onDone=()=>{
     clearSilence();
     if(mode!=='wake') return;
-    if(!committedByUs && !irisFound) {
-      // Chrome mató el continuous silenciosamente — reiniciar SIN clic audible
-      // ya que el mic no estuvo realmente cerrado desde el punto de vista del usuario
+    if(!_wakeCommitted && !_wakeIrisFound) {
+      // Chrome mató el continuous — reiniciar sin clic
       mode='idle';
       setTimeout(startWake, isMobile ? 80 : 200);
       return;
     }
     mode='idle';
-    if(!irisFound){ setTimeout(startWake, isMobile?80:200); return; }
-    if(hasQuestion && stripIris(heard).length>2){
-      handleQuery(stripIris(heard));
+    if(!_wakeIrisFound){ setTimeout(startWake, isMobile?80:200); return; }
+    const query = stripIris(_wakeHeard);
+    if(_wakeHasQuestion && query.length>2){
+      handleQuery(query);
     } else {
       playBeep();
       startConvo();
@@ -3390,7 +3598,6 @@ function startWake() {
     if(mode!=='wake') return;
     mode='idle';
     if(e.error==='not-allowed'){ statusText.textContent=getUI('micDenied'); return; }
-    // no-speech y network son normales en continuous — reiniciar silencioso
     setTimeout(startWake, isMobile?150:600);
   };
 
@@ -3398,29 +3605,34 @@ function startWake() {
 }
 
 // ── DIRECT MODE ──
+let _directHeard = ''; // variable externa — sobrevive al closure de Chrome Android
+
 function startDirect() {
   stopInterruptListener();
   if(rec){ try{rec.abort();}catch(e){} rec=null; }
   clearSilence();
   mode='direct';
+  _directHeard=''; // reset
 
   const r = newRec(true);
   if(!r){ showMsg('Tu navegador no soporta voz. Usa Chrome.','AVISO'); mode='idle'; startWake(); return; }
-  rec=r; let heard='';
+  rec=r;
 
   r.onstart=()=>{ playBeep(); setOrbState('listening'); statusText.textContent=getUI('listening'); btnMic.classList.add('recording'); btnMic.textContent='⏹'; showMsg('...',getUI('youLabel')); };
   r.onresult=(e)=>{
     const finalPart=Array.from(e.results).filter(r=>r.isFinal).map(r=>r[0].transcript).join('');
     const interimPart=Array.from(e.results).filter(r=>!r.isFinal).map(r=>r[0].transcript).join('');
-    let full=(finalPart+interimPart).trim();
-    heard=full.trim(); showMsg(heard,getUI('youLabel'));
+    _directHeard=(finalPart+interimPart).trim();
+    showMsg(_directHeard,getUI('youLabel'));
     setSilence(getSilenceMs(),()=>{ if(mode!=='direct') return; clearSilence(); try{r.stop();}catch(e){} });
   };
   const cleanup=()=>{ clearSilence(); btnMic.classList.remove('recording'); btnMic.textContent='🎙️'; };
   r.onend=()=>{
     cleanup(); if(mode!=='direct') return; mode='idle';
-    if(heard&&heard!=='...'){ const clean=containsIris(heard)?stripIris(heard)||heard:heard; handleQuery(clean); }
-    else { setOrbState('idle'); startWake(); }
+    if(_directHeard&&_directHeard!=='...'){
+      const clean=containsIris(_directHeard)?stripIris(_directHeard)||_directHeard:_directHeard;
+      handleQuery(clean);
+    } else { setOrbState('idle'); startWake(); }
   };
   r.onerror=()=>{ cleanup(); if(mode!=='direct') return; mode='idle'; setOrbState('idle'); startWake(); };
   try{ r.start(); }catch(e){ mode='idle'; startWake(); }
